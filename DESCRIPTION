@@ -1,0 +1,28 @@
+Package: lctmr
+Title: Latent Class Trajectory Modeling for Growth Data
+Version: 0.1.0
+Authors@R:
+    person("Evan", "Liu", , "evanliu@ucdavis.edu", role = c("aut", "cre"))
+Description: Performs Latent Class Trajectory Modeling (LCTM) to identify
+    hidden subgroups of individuals with distinct growth patterns over time.
+    Provides a layered API with high-level automation, mid-level step-by-step
+    functions, and low-level utilities for advanced users. Implements model
+    adequacy checks including APPA, OCC, and relative entropy metrics.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    lcmm,
+    ggplot2,
+    stats
+Suggests:
+    haven,
+    splines,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/evanliu/lctmr
+BugReports: https://github.com/evanliu/lctmr/issues

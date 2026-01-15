@@ -1,0 +1,160 @@
+---
+title: "Introduction to lctmr"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to lctmr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+## What is Latent Class Trajectory Modeling?
+
+Latent Class Trajectory Modeling (LCTM) identifies hidden subgroups (latent classes) of individuals who follow similar patterns of change over time. Unlike standard growth curve models that assume everyone follows the same trajectory, LCTM discovers distinct subgroups with different growth patterns.
+
+For example, in pediatric growth data, LCTM might discover:
+
+- **Class 1**: Children with consistently high weight
+- **Class 2**: Children with rapid early growth that plateaus
+- **Class 3**: Children with slow but steady growth
+- **Class 4**: Children with declining growth
+
+## Getting Started
+
+```{r load-package}
+library(lctmr)
+```
+
+### Sample Data
+
+The package includes a sample dataset of pediatric growth measurements:
+
+```{r sample-data}
+data(sample_growth)
+head(sample_growth)
+
+# Data structure
+str(sample_growth)
+
+# Number of children and observations
+cat("Children:", length(unique(sample_growth$childid)), "\n")
+cat("Total observations:", nrow(sample_growth), "\n")
+```
+
+## Two Ways to Use lctmr
+
+### Option A: Fully Automated with `lctm_auto()`
+Best for: Quick analyses, standard workflows, users new to LCTM
+
+```{r auto-example, eval = FALSE}
+result <- lctm_auto(
+  sample_growth,
+  outcome = "weight_raw",
+
+time_var = "anthroage",
+  id_var = "childid"
+)
+
+# View results
+summary(result)
+plot(result)
+```
+
+The automated function:
+
+1. Tests multiple K values (number of classes)
+2. Fits both Model E and Model F
+3. Checks adequacy metrics automatically
+4. Returns the best passing model
+
+### Option B: Step-by-Step Control
+
+Best for: Iterative analysis, custom configurations, learning the methodology
+
+#### Step 1-2: Setup and BIC Comparison
+
+```{r setup-example, eval = FALSE}
+setup <- lctm_setup(
+  sample_growth,
+  outcome = "weight_raw",
+  time_var = "anthroage",
+  id_var = "childid"
+)
+
+# View BIC rankings
+print(setup)
+setup$bic_table
+```
+
+#### Step 3: Fit a Model
+
+```{r fit-example, eval = FALSE}
+# Fit a 4-class model with proportional variance (Model F)
+model <- lctm_fit(setup, k = 4, model = "F")
+print(model)
+```
+
+#### Step 4: Check Adequacy
+
+```{r adequacy-example, eval = FALSE}
+adequacy <- lctm_adequacy(model)
+print(adequacy)
+
+# If adequacy fails, try a different K
+if (!adequacy$overall_pass) {
+  model <- lctm_fit(setup, k = 3, model = "F")
+  adequacy <- lctm_adequacy(model)
+  print(adequacy)
+}
+```
+#### Step 5: Visualize
+
+```{r plot-example, eval = FALSE}
+# Mean trajectories with confidence intervals
+lctm_plot_trajectories(model, type = "mean", ci = TRUE)
+
+# Individual trajectories colored by class
+lctm_plot_trajectories(model, type = "spaghetti")
+```
+
+## Understanding Model Types
+
+lctmr supports two model types:
+| Model | Name | Variance Structure | When to Use |
+|-------|------|-------------------|-------------|
+| E | Common | Same across classes | Default, simpler |
+| F | Proportional | Proportional to class size | More flexible, often fits better |
+
+```{r model-types, eval = FALSE}
+# Model E: Common variance
+model_e <- lctm_fit(setup, k = 4, model = "E")
+
+# Model F: Proportional variance (recommended)
+model_f <- lctm_fit(setup, k = 4, model = "F")
+```
+
+## Understanding Adequacy Metrics
+
+Three metrics determine if a model adequately separates classes:
+
+| Metric | Threshold | Meaning |
+|--------|-----------|---------|
+| **APPA** | > 0.70 | Average Posterior Probability of Assignment - how confident are class assignments? |
+| **OCC** | > 5.0 | Odds of Correct Classification - odds that assignment is correct vs. random |
+| **Entropy** | > 0.5 | Relative Entropy - overall class separation quality |
+
+A model passes adequacy if **all three** metrics meet their thresholds.
+
+## What's Next?
+
+- See `vignette("workflow")` for detailed explanation of the 5-step methodology
+- See `?lctm_auto` for all available options
+- See `?lctm_plot_trajectories` for visualization options

@@ -1,0 +1,10 @@
+^LICENSE\.md$
+^\.Rproj\.user$
+^.*\.Rproj$
+^\.DS_Store$
+^\.Rhistory$
+^\.RData$
+^cran-comments\.md$
+^README\.Rmd$
+^doc$
+^Meta$
