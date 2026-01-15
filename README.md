@@ -89,14 +89,6 @@ See `vignette("workflow")` for detailed guidance.
 - [lcmm](https://cran.r-project.org/package=lcmm) - Core latent class mixed model fitting
 - [ggplot2](https://cran.r-project.org/package=ggplot2) - Visualization
 
-## Citation
-
-If you use lctmr in your research, please cite:
-
-```
-Liu, E. (2024). lctmr: Latent Class Trajectory Modeling for Growth Data.
-R package version 0.1.0. https://github.com/evanliu/lctmr
-```
 
 ## License
 
