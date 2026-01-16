@@ -96,7 +96,8 @@ lctm_setup <- function(data,
   if (verbose) message("Fitting base model (K=1)...")
 
   # Fit base model (ng = 1) - this provides starting values AND K=1 reference
- base_model <- lcmm::hlme(
+  # Use do.call to ensure formulas are stored in model$call (needed for predictY)
+  base_args <- list(
     fixed = fixed_formula,
     random = random_formula,
     ng = 1,
@@ -104,6 +105,7 @@ lctm_setup <- function(data,
     data = data,
     subject = id_var
   )
+  base_model <- do.call(lcmm::hlme, base_args)
 
   # Store K=1 BIC as reference
   k1_bic <- base_model$BIC
@@ -131,7 +133,8 @@ lctm_setup <- function(data,
 
     tryCatch({
       # Fit multi-class model using base model as starting values
-      model_k <- lcmm::hlme(
+      # Use do.call to ensure formulas are stored in model$call (needed for predictY)
+      model_args <- list(
         fixed = fixed_formula,
         mixture = mixture_formula,
         random = random_formula,
@@ -142,6 +145,7 @@ lctm_setup <- function(data,
         subject = id_var,
         B = base_model
       )
+      model_k <- do.call(lcmm::hlme, model_args)
 
       bic_results <- rbind(bic_results, data.frame(
         k = k,

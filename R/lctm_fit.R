@@ -123,7 +123,8 @@ lctm_fit <- function(setup,
 
   if (needs_new_base && k > 1) {
     if (verbose) message("Fitting new base model for starting values...")
-    base_model <- lcmm::hlme(
+    # Use do.call to ensure formulas are stored in model$call (needed for predictY)
+    base_args <- list(
       fixed = fixed_formula,
       random = random_formula,
       ng = 1,
@@ -131,6 +132,7 @@ lctm_fit <- function(setup,
       data = data,
       subject = id_var
     )
+    base_model <- do.call(lcmm::hlme, base_args)
   }
 
   if (verbose) {
@@ -139,10 +141,11 @@ lctm_fit <- function(setup,
             if (linear) " (linear)" else "")
   }
 
-  # Fit the model
+  # Fit the model using do.call to ensure formulas are stored in model$call
+  # This is required for lcmm::predictY to work correctly
   if (k == 1) {
     # For K=1, fit without mixture term
-    hlme_model <- lcmm::hlme(
+    hlme_args <- list(
       fixed = fixed_formula,
       random = random_formula,
       ng = 1,
@@ -152,7 +155,7 @@ lctm_fit <- function(setup,
     )
   } else {
     # For K > 1, use mixture term and starting values from base model
-    hlme_model <- lcmm::hlme(
+    hlme_args <- list(
       fixed = fixed_formula,
       mixture = mixture_formula,
       random = random_formula,
@@ -164,6 +167,8 @@ lctm_fit <- function(setup,
       B = base_model
     )
   }
+
+  hlme_model <- do.call(lcmm::hlme, hlme_args)
 
   # Check convergence
   if (hlme_model$conv != 1) {

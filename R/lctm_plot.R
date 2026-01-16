@@ -125,50 +125,45 @@ lctm_plot_trajectories <- function(model,
   setup <- model$setup
   time_var <- setup$time_var
   outcome <- setup$outcome
-  id_var <- setup$id_var
   k <- model$k
   hlme_model <- model$model
 
-  # Get the data with class assignments
-  data <- setup$data
-
-  # Add class assignments
-  if (k == 1) {
-    data$class <- factor(1)
-  } else {
-    pprob_table <- hlme_model$pprob
-    class_df <- data.frame(
-      id = pprob_table[[1]],
-      class = factor(pprob_table$class)
-    )
-    names(class_df)[1] <- id_var
-    data <- merge(data, class_df, by = id_var, all.x = TRUE)
-  }
-
-  # Calculate mean trajectories from data
-  # Group by class and time, compute means
+  # Create prediction data frame with time sequence
   time_seq <- seq(time_range[1], time_range[2], length.out = n_points)
+  newdata <- data.frame(time_seq)
+  names(newdata) <- time_var
 
+  # Use lcmm::predictY to get model-based predictions
+  # This uses the fitted model coefficients (not raw data smoothing)
+  plotpred <- lcmm::predictY(hlme_model, newdata, var.time = time_var, draws = ci)
+
+  # Extract time values
+  x_vals <- plotpred$times[[time_var]]
+
+  # predictY$pred is a matrix, use colnames() and matrix subsetting
+  pred_colnames <- colnames(plotpred$pred)
+
+  # Reshape predictions from wide to long format for ggplot
   pred_list <- list()
-  for (cls in seq_len(k)) {
-    class_data <- data[data$class == cls, ]
-    if (nrow(class_data) > 0) {
-      # Fit a local polynomial to get smooth mean
-      fit <- stats::loess(
-        stats::as.formula(paste(outcome, "~", time_var)),
-        data = class_data,
-        span = 0.75
-      )
-      pred_list[[cls]] <- data.frame(
-        time = time_seq,
-        class = factor(cls),
-        pred = stats::predict(fit, newdata = data.frame(setNames(list(time_seq), time_var)))
-      )
+  for (i in seq_len(k)) {
+    class_name <- paste0("Ypred_class", i)
+
+    pred_list[[i]] <- data.frame(
+      time = x_vals,
+      pred = plotpred$pred[, class_name],
+      class = factor(i)
+    )
+
+    # Add CI bounds if available (when draws = TRUE)
+    lower_col <- paste0("lower.Ypred_class", i)
+    upper_col <- paste0("upper.Ypred_class", i)
+    if (ci && lower_col %in% pred_colnames) {
+      pred_list[[i]]$lower <- plotpred$pred[, lower_col]
+      pred_list[[i]]$upper <- plotpred$pred[, upper_col]
     }
   }
 
   pred_df <- do.call(rbind, pred_list)
-  pred_df <- pred_df[!is.na(pred_df$pred), ]
 
   # Create the plot
   p <- ggplot2::ggplot(pred_df, ggplot2::aes(x = .data$time, y = .data$pred,
@@ -187,6 +182,17 @@ lctm_plot_trajectories <- function(model,
       legend.position = "right",
       panel.grid.minor = ggplot2::element_blank()
     )
+
+  # Add confidence interval ribbons if available
+  if (ci && "lower" %in% names(pred_df)) {
+    p <- p +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = .data$lower, ymax = .data$upper,
+                                         fill = .data$class),
+                           alpha = 0.2, color = NA) +
+      ggplot2::scale_fill_manual(values = colors,
+                                 labels = paste("Class", seq_len(k)),
+                                 guide = "none")
+  }
 
   return(p)
 }

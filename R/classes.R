@@ -163,6 +163,7 @@ validate_lctm_model <- function(x) {
 #' @param entropy_pass Logical, whether entropy criterion is met
 #' @param overall_pass Logical, whether all criteria are met
 #' @param thresholds List of threshold values used
+#' @param is_degenerate Logical, whether model is degenerate (has empty classes)
 #'
 #' @return An lctm_adequacy object
 #' @keywords internal
@@ -173,7 +174,8 @@ new_lctm_adequacy <- function(appa,
                               entropy,
                               entropy_pass,
                               overall_pass,
-                              thresholds) {
+                              thresholds,
+                              is_degenerate = FALSE) {
   structure(
     list(
       appa = appa,
@@ -183,7 +185,8 @@ new_lctm_adequacy <- function(appa,
       entropy = entropy,
       entropy_pass = entropy_pass,
       overall_pass = overall_pass,
-      thresholds = thresholds
+      thresholds = thresholds,
+      is_degenerate = is_degenerate
     ),
     class = "lctm_adequacy"
   )

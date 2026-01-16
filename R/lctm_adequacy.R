@@ -13,14 +13,15 @@
 #'
 #' @return An `lctm_adequacy` object containing:
 #' \describe{
-#'   \item{appa}{Named vector of APPA values per class}
+#'   \item{appa}{Named vector of APPA values per class (NA for empty classes)}
 #'   \item{appa_pass}{Logical; TRUE if all APPA values meet threshold}
-#'   \item{occ}{Named vector of OCC values per class}
+#'   \item{occ}{Named vector of OCC values per class (NA/Inf for empty classes)}
 #'   \item{occ_pass}{Logical; TRUE if all OCC values meet threshold}
 #'   \item{entropy}{Relative entropy value}
 #'   \item{entropy_pass}{Logical; TRUE if entropy meets threshold}
 #'   \item{overall_pass}{Logical; TRUE if ALL criteria are met}
 #'   \item{thresholds}{List of threshold values used}
+#'   \item{is_degenerate}{Logical; TRUE if model has empty classes (degenerate)}
 #' }
 #'
 #' @details
@@ -82,7 +83,8 @@ lctm_adequacy <- function(model,
       entropy = 1.0,
       entropy_pass = TRUE,
       overall_pass = TRUE,
-      thresholds = thresholds
+      thresholds = thresholds,
+      is_degenerate = FALSE
     )
     return(result)
   }
@@ -95,14 +97,37 @@ lctm_adequacy <- function(model,
   occ_values <- calc_occ(prob_matrix, model$class_proportions)
   entropy_value <- calc_relative_entropy(prob_matrix)
 
+  # Check for degenerate model (empty classes)
+  # A model is degenerate if any class has no members (NA in APPA)
+  # This matches LCTMtools behavior where NA indicates empty class
+  n_empty_classes <- sum(is.na(appa_values))
+  is_degenerate <- n_empty_classes > 0
+
   # Check against thresholds
-  # For APPA and OCC, all classes must meet the threshold (ignoring NA)
-  appa_pass <- all(appa_values >= thresholds$appa, na.rm = TRUE)
-  occ_pass <- all(occ_values >= thresholds$occ, na.rm = TRUE)
+
+  # For APPA: ALL classes must have valid values >= threshold
+  # If any class is empty (NA), the model fails
+  if (is_degenerate) {
+    appa_pass <- FALSE
+  } else {
+    appa_pass <- all(appa_values >= thresholds$appa)
+  }
+
+  # For OCC: ALL classes must have valid (non-NA, non-Inf) values >= threshold
+  # NA/Inf in OCC indicates empty class or class proportion issues
+  valid_occ <- !is.na(occ_values) & !is.infinite(occ_values)
+  if (!all(valid_occ)) {
+    # If any OCC is NA or Inf, fail the check
+    occ_pass <- FALSE
+  } else {
+    occ_pass <- all(occ_values >= thresholds$occ)
+  }
+
+  # Entropy check
   entropy_pass <- entropy_value >= thresholds$entropy
 
-  # Overall pass requires ALL criteria to be met
-  overall_pass <- appa_pass && occ_pass && entropy_pass
+  # Overall: must pass ALL criteria AND not be degenerate
+  overall_pass <- !is_degenerate && appa_pass && occ_pass && entropy_pass
 
   # Create and return lctm_adequacy object
   result <- new_lctm_adequacy(
@@ -113,7 +138,8 @@ lctm_adequacy <- function(model,
     entropy = entropy_value,
     entropy_pass = entropy_pass,
     overall_pass = overall_pass,
-    thresholds = thresholds
+    thresholds = thresholds,
+    is_degenerate = is_degenerate
   )
 
   validate_lctm_adequacy(result)

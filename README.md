@@ -1,10 +1,5 @@
 # lctmr
 
-<!-- badges: start -->
-[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg)](https://github.com/evanliu/lctmr)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-<!-- badges: end -->
-
 Latent Class Trajectory Modeling (LCTM) for pediatric growth data in R.
 
 ## Overview
@@ -29,7 +24,7 @@ The package provides three levels of abstraction:
 ```r
 # Install from GitHub (development version)
 # install.packages("devtools")
-devtools::install_github("evanliu/lctmr")
+devtools::install_github("evanxliu1/lctmr")
 ```
 
 ## Quick Start

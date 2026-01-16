@@ -122,10 +122,17 @@ print.lctm_adequacy <- function(x, ...) {
   cat("LCTM Model Adequacy\n")
   cat("-------------------\n\n")
 
+  # Check for degenerate model first
+  if (isTRUE(x$is_degenerate)) {
+    cat("WARNING: DEGENERATE MODEL DETECTED\n")
+    cat("One or more classes have no members assigned.\n")
+    cat("This model has effectively collapsed to fewer classes.\n\n")
+  }
+
   # APPA
   cat("APPA (threshold >=", x$thresholds$appa, "):\n")
   for (i in seq_along(x$appa)) {
-    status <- ifelse(is.na(x$appa[i]), "N/A",
+    status <- ifelse(is.na(x$appa[i]), "N/A (empty class)",
                      ifelse(x$appa[i] >= x$thresholds$appa, "PASS", "FAIL"))
     cat("  ", names(x$appa)[i], ": ", round(x$appa[i], 3), " [", status, "]\n", sep = "")
   }
@@ -134,7 +141,7 @@ print.lctm_adequacy <- function(x, ...) {
   # OCC
   cat("OCC (threshold >=", x$thresholds$occ, "):\n")
   for (i in seq_along(x$occ)) {
-    status <- ifelse(is.na(x$occ[i]) | is.infinite(x$occ[i]), "N/A",
+    status <- ifelse(is.na(x$occ[i]) | is.infinite(x$occ[i]), "N/A (empty class)",
                      ifelse(x$occ[i] >= x$thresholds$occ, "PASS", "FAIL"))
     val <- ifelse(is.infinite(x$occ[i]), "Inf", round(x$occ[i], 2))
     cat("  ", names(x$occ)[i], ": ", val, " [", status, "]\n", sep = "")
@@ -152,6 +159,9 @@ print.lctm_adequacy <- function(x, ...) {
     cat("OVERALL: PASS - Model meets all adequacy criteria\n")
   } else {
     cat("OVERALL: FAIL - Model does not meet all criteria\n")
+    if (isTRUE(x$is_degenerate)) {
+      cat("\nReason: Degenerate model (empty classes detected)\n")
+    }
     cat("\nSuggestions:\n")
     cat("  - Try a different number of classes (K)\n")
     cat("  - Try adding splines (use_splines = TRUE)\n")
