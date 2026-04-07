@@ -1,4 +1,4 @@
-#' Plot LCTM Trajectories (Step 5)
+#' Plot LCTM Trajectories
 #'
 #' Creates visualizations of fitted latent class trajectories.
 #'
@@ -17,7 +17,7 @@
 #'   ggplot objects (if type is "both").
 #'
 #' @details
-#' This function performs Step 5 of the LCTM workflow - visualizing the results.
+#' This function visualizes the fitted LCTM results.
 #'
 #' **Plot Types:**
 #' \describe{
