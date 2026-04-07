@@ -68,7 +68,7 @@ print.lctm_model <- function(x, ...) {
   cat("LCTM Model\n")
   cat("----------\n")
   cat("Model type:", x$model_type,
-      ifelse(x$model_type == "E", "(common variance)", "(proportional variance)"), "\n")
+      ifelse(x$model_type == "A", "(common variance)", "(proportional variance)"), "\n")
   cat("Number of classes (K):", x$k, "\n")
   cat("BIC:", round(x$bic, 2), "\n")
 
@@ -166,7 +166,7 @@ print.lctm_adequacy <- function(x, ...) {
     cat("  - Try a different number of classes (K)\n")
     cat("  - Try adding splines (use_splines = TRUE)\n")
     cat("  - Try linear model (linear = TRUE)\n")
-    cat("  - Try the other model type (E vs F)\n")
+    cat("  - Try the other model type (A vs B)\n")
   }
   cat("========================================\n")
 
@@ -174,13 +174,13 @@ print.lctm_adequacy <- function(x, ...) {
 }
 
 # =============================================================================
-# lctm_result methods (for lctm_auto output)
+# lctm_result methods (for lctm_auto / lctm_refine output)
 # =============================================================================
 
 #' @export
 print.lctm_result <- function(x, ...) {
-  cat("LCTM Auto Result\n")
-  cat("================\n\n")
+  cat("LCTM Result\n")
+  cat("===========\n\n")
 
   if (is.null(x$best_model)) {
     cat("No adequate model found.\n")
@@ -235,4 +235,93 @@ plot.lctm_result <- function(x, type = "mean", ...) {
     stop("No model to plot - no adequate model was found", call. = FALSE)
   }
   lctm_plot_trajectories(x$best_model, type = type, ...)
+}
+
+# =============================================================================
+# lctm_cleaned methods
+# =============================================================================
+
+#' @export
+print.lctm_cleaned <- function(x, ...) {
+  cat("LCTM Cleaned Data\n")
+  cat("-----------------\n")
+  cat("Outcome:", x$outcome, "\n")
+  cat("Time variable:", x$time_var, "\n")
+  cat("ID variable:", x$id_var, "\n")
+  if (!is.null(x$sex_var)) cat("Sex variable:", x$sex_var, "\n")
+  cat("Observations:", nrow(x$data), "\n")
+  cat("Subjects:", length(unique(x$data[[x$id_var]])), "\n")
+  if (x$n_removed > 0) {
+    cat("Rows removed:", x$n_removed, "\n")
+  }
+  if (x$subjects_removed > 0) {
+    cat("Subjects removed:", x$subjects_removed, "\n")
+  }
+  cat("\nReady for lctm_initial()\n")
+  invisible(x)
+}
+
+# =============================================================================
+# lctm_initial methods
+# =============================================================================
+
+#' @export
+print.lctm_initial <- function(x, ...) {
+  cat("LCTM Initial Model\n")
+  cat("------------------\n")
+  cat("Outcome:", x$outcome, "\n")
+  cat("Time variable:", x$time_var, "\n")
+  degree_label <- c("1" = "linear", "2" = "quadratic", "3" = "cubic")[as.character(x$degree)]
+  cat("Degree:", x$degree, paste0("(", degree_label, ")"), "\n")
+  if (!is.null(x$knots)) {
+    cat("Knots:", paste(x$knots, collapse = ", "), "\n")
+  }
+  cat("Number of classes (K):", x$k, "\n")
+  cat("Random effects: intercept only (~1)\n")
+
+  # Convergence
+  if (!is.null(x$initial_model)) {
+    conv <- x$initial_model$conv
+    cat("Convergence:", ifelse(conv == 1, "Yes", paste0("No (code: ", conv, ")")), "\n")
+    cat("BIC:", round(x$initial_model$BIC, 2), "\n")
+
+    # Class proportions
+    k <- x$k
+    class_counts <- table(factor(x$initial_model$pprob$class, levels = seq_len(k)))
+    class_proportions <- as.numeric(prop.table(class_counts))
+    cat("\nClass proportions:\n")
+    for (i in seq_len(k)) {
+      cat("  Class", i, ":", round(class_proportions[i] * 100, 1), "%\n")
+    }
+  }
+
+  cat("\n=== Residual Interpretation Guide ===\n")
+  cat("  Horizontal band       -> random intercept only (random = ~ 1)\n")
+  cat("  Diagonal/linear trend  -> add linear random slope\n")
+  cat("  Curved pattern        -> add quadratic random effect\n")
+  cat("  S-shaped pattern      -> consider cubic terms or splines\n")
+  cat("\nUse plot() to view diagnostic plots, then pass to lctm_refine().\n")
+
+  invisible(x)
+}
+
+#' @export
+plot.lctm_initial <- function(x, which = NULL, ...) {
+  if (length(x$plots) == 0) {
+    stop("No plots available in this lctm_initial object", call. = FALSE)
+  }
+
+  if (is.null(which)) {
+    # Print all plots
+    for (p in x$plots) {
+      print(p)
+    }
+  } else {
+    if (!which %in% names(x$plots)) {
+      stop("Plot '", which, "' not found. Available: ",
+           paste(names(x$plots), collapse = ", "), call. = FALSE)
+    }
+    print(x$plots[[which]])
+  }
+  invisible(x)
 }

@@ -1,8 +1,8 @@
 ---
-title: "The 5-Step LCTM Workflow"
+title: "The LCTM Workflow"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{The 5-Step LCTM Workflow}
+  %\VignetteIndexEntry{The LCTM Workflow}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette explains the complete 5-step workflow for Latent Class Trajectory Modeling. Understanding this workflow helps you make informed decisions when the automated approach needs adjustment.
+This vignette explains the investigator-driven workflow for Latent Class Trajectory Modeling, adapted from Lennon et al. (2018) and Gee (2014). The key idea is that the investigator examines diagnostic plots to make informed decisions about model specification before automated refinement.
 
 ```{r load}
 library(lctmr)
@@ -25,128 +25,181 @@ data(sample_growth)
 
 ## Overview
 
-The LCTM workflow is **iterative**. Steps 3-4 may be repeated multiple times until you find a model that passes adequacy checks.
+The LCTM workflow has four steps:
+
 ```
-Step 1: Determine random effects structure (once)
-           ↓
-Step 2: Compare BIC across K values (once)
-           ↓
-    ┌─→ Step 3: Fit candidate model
-    │      ↓
-    │   Step 4: Check adequacy
-    │      ↓
-    │   Pass? ──No──→ Try different K or model type ─┐
-    │      │                                         │
-    │     Yes                                        │
-    │      ↓                                         │
-    │   Step 5: Visualize                            │
-    │                                                │
-    └────────────────────────────────────────────────┘
+Step 1: Prepare and clean longitudinal data
+           |
+Step 2: Visualize growth + fit initial model (no random effects)
+           |
+        Investigator reviews residual patterns
+        and decides random effects structure
+           |
+Step 3: Automated refinement (BIC search + Model A/B + adequacy)
+           |
+Step 4: Interpret and display results
 ```
 
-## Step 1: Determine Random Effects Structure
+## Step 1: Prepare Longitudinal Data
 
-The random effects structure controls model flexibility. This is determined once at the start based on your data characteristics.
-
-**Question**: Does your outcome need random intercept only, random slope, or random quadratic term?
-
-For most growth data, a **quadratic random effects structure** works well because growth often follows curved patterns. This is the default in lctmr.
+Data cleaning identifies biologically implausible values using population-level and individual-level criteria.
 
 ```{r step1, eval = FALSE}
-# The setup function fits a preliminary model to assess structure
-setup <- lctm_setup(
+cleaned <- lctm_clean(
   sample_growth,
   outcome = "weight_raw",
   time_var = "anthroage",
   id_var = "childid",
-  preliminary_k = 3,  # Use 3 classes for preliminary assessment
-  degree = 2          # 2 = quadratic (default), 1 = linear
+  type = "weight",           # Apply weight-specific z-score criteria
+  standards = "WHO",          # Use WHO growth chart thresholds
+  zscore_col = "waz",         # Pre-computed WAZ column
+  check_decrease = FALSE      # Only for height/HC data
 )
 
-# Check the residual analysis
-setup$random_effects_check
+print(cleaned)
 ```
 
-**Decision guide:**
+**What `lctm_clean()` checks:**
 
-| Pattern in Residuals | Recommended Structure |
-|---------------------|----------------------|
-| Random scatter | Current structure is adequate |
-| Funnel shape over time | May need different variance structure |
-| Curved pattern | May need higher degree polynomial |
+| Criterion | Type | Details |
+|-----------|------|---------|
+| Missing values | General | Removes rows with NA in key variables |
+| Z-score outliers | Population-level | WHO: WAZ < -6 or > 5; LAZ < -6 or > 6 |
+| Z-score outliers | Population-level | CDC: WeightMZ < -5 or > 5; HeightMZ < -5 or > 3 |
+| Birth weight | Population-level | Removes <= 500g or >= 5000g |
+| Height/HC decrease | Individual-level | Flags decreases > 3cm between visits |
+| Insufficient data | General | Removes subjects with < 2 observations |
 
-## Step 2: Compare BIC Across K Values
+This step is optional. You can pass a raw data frame directly to `lctm_initial()` if your data is already clean.
 
-BIC (Bayesian Information Criterion) helps identify the optimal number of classes. **Lower BIC = better fit** (accounting for model complexity).
+## Step 2: Visualize and Fit Initial Model
+
+This step produces diagnostic plots and fits an initial model **without random effects**. The purpose is to examine residual patterns that guide the random effects structure for refinement.
 
 ```{r step2, eval = FALSE}
-# BIC comparison is done automatically in lctm_setup()
-setup <- lctm_setup(
-  sample_growth,
-  outcome = "weight_raw",
-  time_var = "anthroage",
-  id_var = "childid",
-  k_range = 1:7  # Test 1 to 7 classes
+initial <- lctm_initial(
+  cleaned,
+  k = 3,                # Plausible number of classes
+  degree = 2,           # 2 = quadratic (default), 1 = linear, 3 = cubic
+  sex_var = NULL,        # Optional: column name for sex stratification
+  save_pdf = "initial_diagnostics.pdf"
 )
 
-# View the BIC table
-setup$bic_table
+# View all diagnostic plots
+plot(initial)
 
-# See ranked recommendations
-setup$k_ranking
+# Or view specific plots
+plot(initial, which = "spaghetti")
+plot(initial, which = "loess")
+plot(initial, which = "residuals")  # Key diagnostic
+plot(initial, which = "guide")      # Reference patterns
 ```
 
-**Interpreting BIC results:**
+### Interpreting Residual Patterns
 
-- Start with the K that has the lowest BIC
-- If that model fails adequacy, try the next-best K
-- Very similar BIC values (within ~10) suggest comparable fit
-- Consider parsimony: prefer fewer classes if BIC is similar
+The residual plot is the key diagnostic. Compare the standardized residual patterns in each class against the reference guide:
 
-## Step 3: Fit Candidate Models
+| Pattern in Residuals | Random Effects Structure |
+|---------------------|------------------------|
+| Horizontal band | Random intercept only: `random = ~ 1` |
+| Diagonal/linear trend | Add linear random slope: `random = ~ 1 + time_var` |
+| Curved pattern | Add quadratic random effect: `random = ~ 1 + time_var + I(time_var^2)` |
+| S-shaped pattern | Consider cubic terms or splines |
 
-Now fit models with your candidate K values. Test both Model E and Model F.
+The initial model also produces spaghetti and loess plots. The loess plot helps characterize the functional form of growth (linear, quadratic, cubic) and identify potential inflection points that may require knots.
+
+### Using Knots for Complex Trajectories
+
+If the loess plot reveals inflection points, you can use natural splines with knots:
+
+```{r step2-knots, eval = FALSE}
+# Place knots at identified inflection points
+initial_knots <- lctm_initial(
+  cleaned,
+  k = 3,
+  degree = 1,            # Must be 1 when using knots
+  knots = c(3, 6, 9)     # Knot positions (e.g., ages in months)
+)
+```
+
+## Step 3: Automated Refinement
+
+Based on the residual patterns from Step 2, specify the random effects structure and let `lctm_refine()` automate the search across K values and model types.
 
 ```{r step3, eval = FALSE}
-# Model F (proportional variance) - usually fits better
-model_f <- lctm_fit(setup, k = 4, model = "F")
+# Example: residuals showed a diagonal trend -> linear random slope
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,          # Based on residual interpretation
+  k_range = 2:5,                      # K values to test
+  models = c("B", "A"),               # Model B (proportional) tried first
+  adequacy_thresholds = list(
+    appa = 0.70,
+    occ = 5.0,
+    entropy = 0.5
+  )
+)
 
-# Model E (common variance) - simpler
-model_e <- lctm_fit(setup, k = 4, model = "E")
-
-# View model summary
-print(model_f)
+summary(result)
 ```
 
-### Model E vs Model F
+### What `lctm_refine()` Does Automatically
 
-| Aspect | Model E | Model F |
+For each K value (ranked by BIC, lowest first):
+
+1. Fits **Model B** (proportional variance) - allows classes to differ in variance
+2. Checks adequacy (APPA, OCC, entropy)
+3. If Model B fails, fits **Model A** (common variance)
+4. Checks adequacy again
+5. Stops at first model passing all criteria
+
+If no model passes, the function reports this and suggests reconsidering the initial model specification.
+
+### Model A vs Model B
+
+| Aspect | Model A | Model B |
 |--------|---------|---------|
 | Variance | Same for all classes | Proportional to class size |
 | Flexibility | Less | More |
 | Parameters | Fewer | More |
 | When to use | Homogeneous classes | Heterogeneous classes |
 
-**Recommendation**: Start with Model F. If it fails adequacy or doesn't converge, try Model E.
+### Additional Options
 
-### Advanced Options
+```{r step3-options, eval = FALSE}
+# Include covariates (added to fixed effects only)
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,
+  covariates = c("sex", "birth_weight"),
+  k_range = 2:5
+)
 
-```{r step3-advanced, eval = FALSE}
-# Use natural splines for complex trajectories
-model_spline <- lctm_fit(setup, k = 4, model = "F",
-                         use_splines = TRUE, spline_df = 3)
+# Use simple starting values (more efficient for large datasets)
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,
+  start_simple = TRUE,
+  k_range = 2:5
+)
 
-# Use linear instead of quadratic
-model_linear <- lctm_fit(setup, k = 4, model = "F", linear = TRUE)
+# Save result plots to PDF
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,
+  save_pdf = "refine_results.pdf"
+)
 ```
 
-## Step 4: Check Model Adequacy
+## Step 4: Interpret and Display Results
 
-A model must pass **all three** adequacy criteria to be considered valid:
+Once you have a model that passes adequacy, examine the results.
 
-```{r step4, eval = FALSE}
-adequacy <- lctm_adequacy(model_f)
-print(adequacy)
+### Adequacy Metrics
+
+```{r step4-adequacy, eval = FALSE}
+# Adequacy is stored in the result
+print(result$adequacy)
 ```
 
 ### The Three Metrics
@@ -155,13 +208,7 @@ print(adequacy)
 
 - **Threshold**: > 0.70
 - **Meaning**: On average, how confident are we about class assignments?
-- **Calculation**: For each class, average the posterior probability among members assigned to that class
-
-```{r appa-explain, eval = FALSE}
-# APPA for each class
-adequacy$appa
-# Example: c(0.85, 0.78, 0.82, 0.91) - all classes > 0.70 = PASS
-```
+- **Per-class**: Each class must individually meet this threshold
 
 #### OCC (Odds of Correct Classification)
 
@@ -169,105 +216,67 @@ adequacy$appa
 - **Meaning**: What are the odds that a class assignment is correct vs. random?
 - **Interpretation**: OCC of 10 means correct classification is 10x more likely than random
 
-```{r occ-explain, eval = FALSE}
-# OCC for each class
-adequacy$occ
-# Example: c(12.3, 8.5, 9.1, 15.2) - all classes > 5.0 = PASS
-```
-
 #### Relative Entropy
 
 - **Threshold**: > 0.5
-- **Meaning**: Overall measure of class separation (0 = no separation, 1 = perfect separation)
-- **Single value**: Unlike APPA and OCC, entropy is one number for the whole model
+- **Meaning**: Overall measure of class separation (0 = no separation, 1 = perfect)
+- **Single value** for the whole model, unlike APPA and OCC which are per-class
 
-```{r entropy-explain, eval = FALSE}
-# Relative entropy
-adequacy$entropy
-# Example: 0.72 - above 0.5 = PASS
-```
+### Trajectory Plots
 
-### What If Adequacy Fails?
-
-```{r adequacy-fail, eval = FALSE}
-adequacy <- lctm_adequacy(model_f)
-
-if (!adequacy$overall_pass) {
-  # Strategy 1: Try different K
-  model_k3 <- lctm_fit(setup, k = 3, model = "F")
-  adequacy_k3 <- lctm_adequacy(model_k3)
-
-  # Strategy 2: Try different model type
-  model_e <- lctm_fit(setup, k = 4, model = "E")
-  adequacy_e <- lctm_adequacy(model_e)
-
-  # Strategy 3: Try splines for complex patterns
-  model_spline <- lctm_fit(setup, k = 4, model = "F", use_splines = TRUE)
-  adequacy_spline <- lctm_adequacy(model_spline)
-
-  # Strategy 4: Try linear if quadratic is overfitting
-  model_linear <- lctm_fit(setup, k = 4, model = "F", linear = TRUE)
-  adequacy_linear <- lctm_adequacy(model_linear)
-}
-```
-
-**Troubleshooting guide:**
-
-| Problem | Likely Cause | Solution |
-|---------|--------------|----------|
-| Low APPA in one class | Poorly defined class | Try fewer K |
-| Low OCC everywhere | Classes overlap too much | Try fewer K or different model |
-| Low entropy | Poor overall separation | Try fewer K |
-| Model won't converge | Too many parameters | Try Model E or fewer K |
-
-## Step 5: Visualize Results
-
-Once you have a model that passes adequacy, visualize the results.
-
-### Mean Trajectories
-
-```{r step5-mean, eval = FALSE}
+```{r step4-mean, eval = FALSE}
 # Mean trajectory for each class with confidence intervals
-lctm_plot_trajectories(model_f, type = "mean", ci = TRUE)
-```
+plot(result)
 
-This plot shows:
+# Or call the plot function directly for more control
+lctm_plot_trajectories(result$best_model, type = "mean", ci = TRUE)
 
-- One line per class showing the average trajectory
-- Shaded regions for 95% confidence intervals
-- Class proportions in the legend
-
-### Spaghetti Plots
-
-```{r step5-spaghetti, eval = FALSE}
 # Individual trajectories colored by class assignment
-lctm_plot_trajectories(model_f, type = "spaghetti")
+lctm_plot_trajectories(result$best_model, type = "spaghetti")
+
+# Both views
+lctm_plot_trajectories(result$best_model, type = "both")
 ```
 
-This plot shows:
+### Residual Diagnostics
 
-- Every individual's trajectory as a thin line
-- Colors indicate assigned class
-- Helps assess within-class heterogeneity
+```{r step4-residuals, eval = FALSE}
+# Check residuals of the final model
+lctm_plot_residuals(result$best_model, standardized = TRUE, by_class = TRUE)
+```
 
-### Combined View
+### Class Assignments
 
-```{r step5-both, eval = FALSE}
-# Both mean and individual trajectories
-lctm_plot_trajectories(model_f, type = "both")
+```{r step4-assignments, eval = FALSE}
+# Extract class assignments for further analysis
+assignments <- result$class_assignments
+head(assignments)
+
+# Class proportions
+table(assignments$class) / nrow(assignments)
 ```
 
 ### Customization
 
-```{r step5-custom, eval = FALSE}
+```{r step4-custom, eval = FALSE}
 # Custom colors
-lctm_plot_trajectories(model_f, type = "mean",
-                       colors = c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3"))
+lctm_plot_trajectories(result$best_model, type = "mean",
+                       colors = c("#E41A1C", "#377EB8", "#4DAF4A"))
 
 # Custom time range
-lctm_plot_trajectories(model_f, type = "mean",
+lctm_plot_trajectories(result$best_model, type = "mean",
                        time_range = c(0, 12))
 ```
+
+### What If No Model Passes Adequacy?
+
+If `lctm_refine()` reports that no model met all criteria:
+
+1. **Reconsider the initial model** - try a different trajectory shape or degree
+2. **Adjust knot placement** - inflection points may be at different positions
+3. **Try a different random effects structure** - the residual patterns may suggest an alternative
+4. **Expand K range** - try more or fewer classes
+5. **Report as a limitation** - the data may not support trajectory heterogeneity
 
 ## Complete Example
 
@@ -275,44 +284,43 @@ lctm_plot_trajectories(model_f, type = "mean",
 library(lctmr)
 data(sample_growth)
 
-# Steps 1-2: Setup with BIC comparison
-setup <- lctm_setup(
+# Step 1: Clean
+cleaned <- lctm_clean(
   sample_growth,
   outcome = "weight_raw",
   time_var = "anthroage",
   id_var = "childid"
 )
-print(setup$bic_table)
 
-# Step 3-4: Iterative fitting
-# Try K=4 first (assuming it had best BIC)
-model <- lctm_fit(setup, k = 4, model = "F")
-adequacy <- lctm_adequacy(model)
-print(adequacy)
+# Step 2: Initial model + diagnostics
+initial <- lctm_initial(cleaned, k = 3, degree = 2)
+plot(initial, which = "residuals")  # Examine residual patterns
 
-# If failed, try K=3
-if (!adequacy$overall_pass) {
-  model <- lctm_fit(setup, k = 3, model = "F")
-  adequacy <- lctm_adequacy(model)
-  print(adequacy)
-}
+# Step 3: Refine (residuals showed linear trend -> random slope)
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,
+  k_range = 2:5
+)
 
-# Step 5: Visualize final model
-lctm_plot_trajectories(model, type = "mean", ci = TRUE)
-lctm_plot_trajectories(model, type = "spaghetti")
+# Step 4: Interpret
+summary(result)
+print(result$adequacy)
+lctm_plot_trajectories(result$best_model, type = "mean", ci = TRUE)
+lctm_plot_trajectories(result$best_model, type = "spaghetti")
 
-# Extract class assignments for further analysis
-assignments <- model$class_assignments
+# Class assignments for downstream analysis
+assignments <- result$class_assignments
 head(assignments)
 ```
 
 ## Summary
 
-| Step | Function | Output |
-|------|----------|--------|
-| 1-2 | `lctm_setup()` | BIC table, K rankings |
-| 3 | `lctm_fit()` | Fitted model object |
-| 4 | `lctm_adequacy()` | APPA, OCC, entropy with pass/fail |
-| 5 | `lctm_plot_trajectories()` | ggplot visualizations |
+| Step | Function | Purpose |
+|------|----------|---------|
+| 1 | `lctm_clean()` | Prepare data, remove implausible values |
+| 2 | `lctm_initial()` | Diagnostic plots, guide random effects decision |
+| 3 | `lctm_refine()` | Automated BIC search + Model A/B + adequacy |
+| 4 | `lctm_plot_*()` | Visualize and interpret results |
 
-Remember: LCTM is iterative. Don't be discouraged if your first model doesn't pass adequacy. The workflow is designed for exploration and refinement.
+The workflow places investigator judgment at the center: you examine plots and residual patterns to decide the trajectory form and random effects structure, then `lctm_refine()` automates the model search.

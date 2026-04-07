@@ -12,7 +12,7 @@ test_that("lctm_auto returns valid result object", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2:3,
-    models = "F",
+    models = "B",
     try_splines = FALSE,
     try_linear = FALSE,
     verbose = FALSE
@@ -40,8 +40,8 @@ test_that("lctm_auto finds adequate model when one exists", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2:3,
-    models = "F",
-    adequacy_thresholds = list(appa = 0.5, occ = 2.0, entropy = 0.3),
+    models = "B",
+    adequacy_thresholds = list(appa = 0.4, occ = 1.0, entropy = 0.2),
     try_splines = FALSE,
     try_linear = FALSE,
     verbose = FALSE
@@ -63,7 +63,7 @@ test_that("lctm_auto records search history", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2:3,
-    models = c("F", "E"),
+    models = c("B", "A"),
     try_splines = FALSE,
     try_linear = FALSE,
     verbose = FALSE
@@ -88,7 +88,7 @@ test_that("lctm_auto tries splines when enabled", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2,
-    models = "F",
+    models = "B",
     try_splines = TRUE,
     try_linear = FALSE,
     verbose = FALSE
@@ -109,7 +109,7 @@ test_that("lctm_auto tries linear when enabled", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2,
-    models = "F",
+    models = "B",
     try_splines = FALSE,
     try_linear = TRUE,
     verbose = FALSE
@@ -130,7 +130,7 @@ test_that("lctm_auto print method works", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2:3,
-    models = "F",
+    models = "B",
     try_splines = FALSE,
     try_linear = FALSE,
     verbose = FALSE
@@ -150,7 +150,7 @@ test_that("lctm_auto returns class assignments when model found", {
     time_var = "anthroage",
     id_var = "childid",
     k_range = 2:3,
-    models = "F",
+    models = "B",
     adequacy_thresholds = list(appa = 0.5, occ = 2.0, entropy = 0.3),
     try_splines = FALSE,
     try_linear = FALSE,

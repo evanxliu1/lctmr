@@ -3,6 +3,10 @@
 #' Prepares data for latent class trajectory modeling by validating inputs,
 #' fitting a base model, and comparing BIC across different numbers of classes.
 #'
+#' @note Consider using the new investigator-driven workflow instead:
+#'   `lctm_clean() -> lctm_initial() -> lctm_refine()`.
+#'   This function remains available for backward compatibility.
+#'
 #' @param data A data frame containing longitudinal data.
 #' @param outcome Character string naming the outcome variable (e.g., "weight").
 #' @param time_var Character string naming the time variable (e.g., "age").
@@ -139,7 +143,7 @@ lctm_setup <- function(data,
         mixture = mixture_formula,
         random = random_formula,
         ng = k,
-        nwg = TRUE,  # Use Model F (proportional variance) for BIC comparison
+        nwg = TRUE,  # Use Model B (proportional variance) for BIC comparison
         idiag = FALSE,
         data = data,
         subject = id_var,

@@ -7,7 +7,7 @@ test_that("lctm_adequacy creates valid adequacy object", {
 
   setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
                       k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "F", verbose = FALSE)
+  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
 
   adequacy <- lctm_adequacy(model)
 
@@ -32,7 +32,7 @@ test_that("lctm_adequacy works with K=1", {
 
   setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
                       k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 1, model = "F", verbose = FALSE)
+  model <- lctm_fit(setup, k = 1, model = "B", verbose = FALSE)
 
   adequacy <- lctm_adequacy(model)
 
@@ -49,7 +49,7 @@ test_that("lctm_adequacy uses custom thresholds", {
 
   setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
                       k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "F", verbose = FALSE)
+  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
 
   # Very strict thresholds
   adequacy_strict <- lctm_adequacy(model,
@@ -71,7 +71,7 @@ test_that("lctm_adequacy print method works", {
 
   setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
                       k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "F", verbose = FALSE)
+  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
   adequacy <- lctm_adequacy(model)
 
   expect_output(print(adequacy), "LCTM Model Adequacy")

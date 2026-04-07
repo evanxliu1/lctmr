@@ -3,10 +3,14 @@
 #' Fits a latent class trajectory model with specified number of classes
 #' and model type.
 #'
+#' @note Consider using the new investigator-driven workflow instead:
+#'   `lctm_clean() -> lctm_initial() -> lctm_refine()`.
+#'   This function remains available for backward compatibility.
+#'
 #' @param setup An `lctm_setup` object from [lctm_setup()].
 #' @param k Integer; number of latent classes to fit.
-#' @param model Character; model type - "E" (common variance) or "F" (proportional variance).
-#'   Default is "F".
+#' @param model Character; model type - "A" (common variance) or "B" (proportional variance).
+#'   Default is "B".
 #' @param use_splines Logical; if TRUE, adds natural splines to the fixed and mixture
 #'   effects. Can help capture non-polynomial trajectories.
 #' @param spline_df Integer; degrees of freedom for natural splines (default 3).
@@ -19,7 +23,7 @@
 #' \describe{
 #'   \item{model}{The fitted lcmm hlme model object}
 #'   \item{k}{Number of classes}
-#'   \item{model_type}{Model type ("E" or "F")}
+#'   \item{model_type}{Model type ("A" or "B")}
 #'   \item{bic}{BIC value}
 #'   \item{class_proportions}{Proportion of observations in each class}
 #'   \item{setup}{The lctm_setup object used}
@@ -33,11 +37,11 @@
 #'
 #' **Model Types:**
 #' \describe{
-#'   \item{Model E}{Random quadratic with common variance across classes (nwg = FALSE)}
-#'   \item{Model F}{Random quadratic with proportional variance (nwg = TRUE)}
+#'   \item{Model A}{Random quadratic with common variance across classes (nwg = FALSE)}
+#'   \item{Model B}{Random quadratic with proportional variance (nwg = TRUE)}
 #' }
 #'
-#' Model F is generally preferred as it allows more flexibility in variance structure.
+#' Model B is generally preferred as it allows more flexibility in variance structure.
 #'
 #' **Splines:**
 #' Adding natural splines (`use_splines = TRUE`) can help when trajectories
@@ -49,17 +53,17 @@
 #' data(sample_growth)
 #' setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
 #'
-#' # Fit Model F with 3 classes
-#' model <- lctm_fit(setup, k = 3, model = "F")
+#' # Fit Model B with 3 classes
+#' model <- lctm_fit(setup, k = 3, model = "B")
 #'
 #' # Try with splines if adequacy fails
-#' model_splines <- lctm_fit(setup, k = 3, model = "F", use_splines = TRUE)
+#' model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
 #' }
 #'
 #' @export
 lctm_fit <- function(setup,
                      k,
-                     model = "F",
+                     model = "B",
                      use_splines = FALSE,
                      spline_df = 3,
                      linear = FALSE,
@@ -75,14 +79,14 @@ lctm_fit <- function(setup,
   }
   k <- as.integer(k)
 
-  if (!model %in% c("E", "F")) {
-    stop("model must be 'E' or 'F'", call. = FALSE)
+  if (!model %in% c("A", "B")) {
+    stop("model must be 'A' or 'B'", call. = FALSE)
   }
 
   # Determine nwg based on model type
-  # Model E: nwg = FALSE (common variance)
-  # Model F: nwg = TRUE (proportional variance)
-  nwg <- (model == "F")
+  # Model A: nwg = FALSE (common variance)
+  # Model B: nwg = TRUE (proportional variance)
+  nwg <- (model == "B")
 
   # Extract info from setup
   data <- setup$data

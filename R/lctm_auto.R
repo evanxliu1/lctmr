@@ -3,13 +3,17 @@
 #' Performs a complete latent class trajectory modeling analysis automatically,
 #' selecting the best model that meets adequacy criteria.
 #'
+#' @note Consider using the new investigator-driven workflow instead:
+#'   `lctm_clean() -> lctm_initial() -> lctm_refine()`.
+#'   This function remains available for backward compatibility.
+#'
 #' @param data A data frame containing longitudinal data.
 #' @param outcome Character string naming the outcome variable.
 #' @param time_var Character string naming the time variable.
 #' @param id_var Character string naming the subject ID variable.
 #' @param k_range Integer vector of K values to search (default 2:7).
 #'   K=1 is excluded because LCTM requires at least 2 classes.
-#' @param models Character vector of model types to try (default c("E", "F")).
+#' @param models Character vector of model types to try (default c("B", "A")).
 #' @param adequacy_thresholds List of adequacy thresholds:
 #' \describe{
 #'   \item{appa}{Minimum APPA (default 0.70)}
@@ -25,7 +29,7 @@
 #' \describe{
 #'   \item{best_model}{The best lctm_model object that passed adequacy, or NULL}
 #'   \item{best_k}{Number of classes in best model}
-#'   \item{best_model_type}{Model type of best model ("E" or "F")}
+#'   \item{best_model_type}{Model type of best model ("A" or "B")}
 #'   \item{adequacy}{lctm_adequacy object for best model}
 #'   \item{bic_table}{BIC comparison table from setup}
 #'   \item{all_models}{List of all fitted models (optional)}
@@ -38,7 +42,7 @@
 #'
 #' 1. **Setup:** Validates data and compares BIC across K values
 #' 2. **Search:** For each K (in BIC order):
-#'    - Tries Model F, then Model E
+#'    - Tries Model B, then Model A
 #'    - If adequacy fails and `try_splines = TRUE`, tries with splines
 #'    - If adequacy fails and `try_linear = TRUE`, tries linear model
 #' 3. **Selection:** Returns first model that passes all adequacy criteria
@@ -70,7 +74,7 @@ lctm_auto <- function(data,
                       time_var,
                       id_var,
                       k_range = 2:7,
-                      models = c("F", "E"),
+                      models = c("B", "A"),
                       adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5),
                       try_splines = TRUE,
                       try_linear = TRUE,

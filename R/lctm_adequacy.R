@@ -42,20 +42,20 @@
 #' - Trying a different number of classes (K)
 #' - Using splines (`use_splines = TRUE` in [lctm_fit()])
 #' - Using linear instead of quadratic model
-#' - Trying the other model type (E vs F)
+#' - Trying the other model type (A vs B)
 #'
 #' @examples
 #' \dontrun{
 #' data(sample_growth)
 #' setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-#' model <- lctm_fit(setup, k = 3, model = "F")
+#' model <- lctm_fit(setup, k = 3, model = "B")
 #'
 #' adequacy <- lctm_adequacy(model)
 #' print(adequacy)
 #'
 #' if (!adequacy$overall_pass) {
 #'   # Try with splines
-#'   model_splines <- lctm_fit(setup, k = 3, model = "F", use_splines = TRUE)
+#'   model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
 #'   adequacy_splines <- lctm_adequacy(model_splines)
 #' }
 #' }
@@ -113,11 +113,10 @@ lctm_adequacy <- function(model,
     appa_pass <- all(appa_values >= thresholds$appa)
   }
 
-  # For OCC: ALL classes must have valid (non-NA, non-Inf) values >= threshold
-  # NA/Inf in OCC indicates empty class or class proportion issues
-  valid_occ <- !is.na(occ_values) & !is.infinite(occ_values)
-  if (!all(valid_occ)) {
-    # If any OCC is NA or Inf, fail the check
+  # For OCC: ALL classes must have valid (non-NA) values >= threshold
+  # NA in OCC indicates empty class or class proportion issues — fail
+  # Inf means APPA = 1 (perfect classification) — always passes
+  if (any(is.na(occ_values))) {
     occ_pass <- FALSE
   } else {
     occ_pass <- all(occ_values >= thresholds$occ)

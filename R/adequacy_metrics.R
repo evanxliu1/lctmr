@@ -132,9 +132,12 @@ calc_occ <- function(prob_matrix, class_proportions = NULL) {
 
   occ_values <- numerator / denominator
 
+
   # Handle edge cases
+  # NaN arises from 0/0 (empty class with zero proportion) — treat as NA
   occ_values[is.nan(occ_values)] <- NA_real_
-  occ_values[is.infinite(occ_values)] <- NA_real_
+  # Inf arises when APPA = 1 (perfect classification) — this is excellent,
+  # so keep it as Inf rather than converting to NA
 
   names(occ_values) <- paste0("Class", seq_len(K))
   return(occ_values)

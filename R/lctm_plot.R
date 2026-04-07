@@ -32,7 +32,7 @@
 #' \dontrun{
 #' data(sample_growth)
 #' setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-#' model <- lctm_fit(setup, k = 3, model = "F")
+#' model <- lctm_fit(setup, k = 3, model = "B")
 #'
 #' # Mean trajectory plot
 #' lctm_plot_trajectories(model, type = "mean")
@@ -238,7 +238,7 @@ lctm_plot_trajectories <- function(model,
 #'
 #' @examples
 #' \dontrun{
-#' model <- lctm_fit(setup, k = 3, model = "F")
+#' model <- lctm_fit(setup, k = 3, model = "B")
 #' lctm_plot_residuals(model)
 #' }
 #'
@@ -255,11 +255,26 @@ lctm_plot_residuals <- function(model,
   time_var <- setup$time_var
   hlme_model <- model$model
 
-  # Extract residuals
-  resid_type <- if (standardized) "residSS" else "resid_m"
+  # Extract residuals from the pred data frame (not top-level hlme object)
+  pred_df <- hlme_model$pred
+  resid_type <- if (standardized) "resid_ss" else "resid_m"
+  resid_vals <- if (resid_type %in% names(pred_df)) {
+    pred_df[[resid_type]]
+  } else {
+    # Fallback: marginal residuals
+    pred_df$obs - pred_df$pred_m
+  }
+
+  # Use rows that match pred_df (hlme may drop NA rows during fitting)
+  if (!is.null(hlme_model$na.action)) {
+    used_data <- setup$data[-hlme_model$na.action, , drop = FALSE]
+  } else {
+    used_data <- setup$data
+  }
+
   residuals_data <- data.frame(
-    time = setup$data[[time_var]],
-    residual = hlme_model[[resid_type]]
+    time = used_data[[time_var]],
+    residual = resid_vals
   )
 
   # Add class assignments

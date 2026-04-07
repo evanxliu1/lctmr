@@ -35,7 +35,7 @@ library(lctmr)
 
 ### Sample Data
 
-The package includes a sample dataset of pediatric growth measurements:
+The package includes a sample dataset of pediatric growth measurements from the Mazira study:
 
 ```{r sample-data}
 data(sample_growth)
@@ -51,19 +51,57 @@ cat("Total observations:", nrow(sample_growth), "\n")
 
 ## Two Ways to Use lctmr
 
-### Option A: Fully Automated with `lctm_auto()`
-Best for: Quick analyses, standard workflows, users new to LCTM
+### Option A: Investigator-Driven Workflow (Recommended)
+
+This is the recommended approach, aligned with Lennon et al. (2018). The investigator examines diagnostic plots to make informed decisions about model specification before automated refinement.
+
+```{r investigator-example, eval = FALSE}
+library(lctmr)
+data(sample_growth)
+
+# Step 1: Clean data (optional but recommended)
+cleaned <- lctm_clean(
+  sample_growth,
+  outcome = "weight_raw",
+  time_var = "anthroage",
+  id_var = "childid"
+)
+
+# Step 2: Fit initial model and examine diagnostics
+initial <- lctm_initial(
+  cleaned,
+  k = 3,
+  degree = 2,
+  save_pdf = "initial_diagnostics.pdf"
+)
+
+# Review: spaghetti, loess, and residual plots guide your decisions
+plot(initial)
+
+# Step 3: Refine based on residual patterns
+# e.g., if residuals show a diagonal trend, add a linear random slope:
+result <- lctm_refine(
+  initial,
+  random = ~ 1 + anthroage,
+  k_range = 2:5
+)
+
+summary(result)
+plot(result)
+```
+
+### Option B: Fully Automated
+
+Best for quick exploratory analyses. The automated function handles all decisions internally.
 
 ```{r auto-example, eval = FALSE}
 result <- lctm_auto(
   sample_growth,
   outcome = "weight_raw",
-
-time_var = "anthroage",
+  time_var = "anthroage",
   id_var = "childid"
 )
 
-# View results
 summary(result)
 plot(result)
 ```
@@ -71,75 +109,20 @@ plot(result)
 The automated function:
 
 1. Tests multiple K values (number of classes)
-2. Fits both Model E and Model F
+2. Fits both Model B (proportional variance) and Model A (common variance)
 3. Checks adequacy metrics automatically
 4. Returns the best passing model
 
-### Option B: Step-by-Step Control
-
-Best for: Iterative analysis, custom configurations, learning the methodology
-
-#### Step 1-2: Setup and BIC Comparison
-
-```{r setup-example, eval = FALSE}
-setup <- lctm_setup(
-  sample_growth,
-  outcome = "weight_raw",
-  time_var = "anthroage",
-  id_var = "childid"
-)
-
-# View BIC rankings
-print(setup)
-setup$bic_table
-```
-
-#### Step 3: Fit a Model
-
-```{r fit-example, eval = FALSE}
-# Fit a 4-class model with proportional variance (Model F)
-model <- lctm_fit(setup, k = 4, model = "F")
-print(model)
-```
-
-#### Step 4: Check Adequacy
-
-```{r adequacy-example, eval = FALSE}
-adequacy <- lctm_adequacy(model)
-print(adequacy)
-
-# If adequacy fails, try a different K
-if (!adequacy$overall_pass) {
-  model <- lctm_fit(setup, k = 3, model = "F")
-  adequacy <- lctm_adequacy(model)
-  print(adequacy)
-}
-```
-#### Step 5: Visualize
-
-```{r plot-example, eval = FALSE}
-# Mean trajectories with confidence intervals
-lctm_plot_trajectories(model, type = "mean", ci = TRUE)
-
-# Individual trajectories colored by class
-lctm_plot_trajectories(model, type = "spaghetti")
-```
-
 ## Understanding Model Types
 
-lctmr supports two model types:
+lctmr supports two model types, evaluated during refinement:
+
 | Model | Name | Variance Structure | When to Use |
 |-------|------|-------------------|-------------|
-| E | Common | Same across classes | Default, simpler |
-| F | Proportional | Proportional to class size | More flexible, often fits better |
+| A | Common variance | Same across classes | Simpler, homogeneous classes |
+| B | Proportional variance | Proportional to class size | More flexible, often fits better |
 
-```{r model-types, eval = FALSE}
-# Model E: Common variance
-model_e <- lctm_fit(setup, k = 4, model = "E")
-
-# Model F: Proportional variance (recommended)
-model_f <- lctm_fit(setup, k = 4, model = "F")
-```
+Model B is tried first by default, as it allows classes to have different levels of within-class variability.
 
 ## Understanding Adequacy Metrics
 
@@ -155,6 +138,7 @@ A model passes adequacy if **all three** metrics meet their thresholds.
 
 ## What's Next?
 
-- See `vignette("workflow")` for detailed explanation of the 5-step methodology
-- See `?lctm_auto` for all available options
+- See `vignette("workflow")` for detailed explanation of the 4-step methodology
+- See `?lctm_initial` and `?lctm_refine` for the investigator-driven workflow
+- See `?lctm_auto` for the automated option
 - See `?lctm_plot_trajectories` for visualization options

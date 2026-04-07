@@ -92,7 +92,7 @@ validate_lctm_setup <- function(x) {
 #'
 #' @param model The lcmm hlme model object
 #' @param k Number of classes
-#' @param model_type Model type ("E" or "F")
+#' @param model_type Model type ("A" or "B")
 #' @param bic BIC value
 #' @param class_proportions Proportion in each class
 #' @param setup The lctm_setup object used
@@ -142,8 +142,8 @@ validate_lctm_model <- function(x) {
     stop("$k must be a positive integer", call. = FALSE)
   }
 
-  if (!x$model_type %in% c("E", "F")) {
-    stop("$model_type must be 'E' or 'F'", call. = FALSE)
+  if (!x$model_type %in% c("A", "B")) {
+    stop("$model_type must be 'A' or 'B'", call. = FALSE)
   }
 
   invisible(x)
@@ -221,7 +221,7 @@ validate_lctm_adequacy <- function(x) {
 #'
 #' @param best_model The best lctm_model object
 #' @param best_k Optimal number of classes
-#' @param best_model_type Which model type ("E" or "F")
+#' @param best_model_type Which model type ("A" or "B")
 #' @param adequacy lctm_adequacy object for best model
 #' @param bic_table Data frame with all BIC comparisons
 #' @param all_models List of all fitted lctm_model objects
@@ -268,4 +268,79 @@ validate_lctm_result <- function(x) {
   }
 
   invisible(x)
+}
+
+# -----------------------------------------------------------------------------
+# lctm_cleaned class
+# -----------------------------------------------------------------------------
+
+#' Create a new lctm_cleaned object
+#'
+#' @param data Cleaned data frame
+#' @param outcome Name of outcome variable
+#' @param time_var Name of time variable
+#' @param id_var Name of ID variable
+#' @param sex_var Name of sex variable (optional)
+#' @param n_removed Number of rows removed during cleaning
+#' @param subjects_removed Number of subjects removed
+#'
+#' @return An lctm_cleaned object
+#' @keywords internal
+new_lctm_cleaned <- function(data, outcome, time_var, id_var,
+                             sex_var = NULL, n_removed = 0L,
+                             subjects_removed = 0L) {
+  structure(
+    list(
+      data = data,
+      outcome = outcome,
+      time_var = time_var,
+      id_var = id_var,
+      sex_var = sex_var,
+      n_removed = n_removed,
+      subjects_removed = subjects_removed
+    ),
+    class = "lctm_cleaned"
+  )
+}
+
+# -----------------------------------------------------------------------------
+# lctm_initial class
+# -----------------------------------------------------------------------------
+
+#' Create a new lctm_initial object
+#'
+#' @param data Data frame used for fitting
+#' @param outcome Name of outcome variable
+#' @param time_var Name of time variable
+#' @param id_var Name of ID variable
+#' @param sex_var Name of sex variable (optional)
+#' @param degree Polynomial degree
+#' @param k Number of classes in initial model
+#' @param initial_model The hlme object (fitted with random = ~1)
+#' @param base_model The ng=1 model for starting values
+#' @param plots Named list of ggplot objects
+#'
+#' @return An lctm_initial object
+#' @keywords internal
+new_lctm_initial <- function(data, outcome, time_var, id_var,
+                             sex_var = NULL, degree = 2L, k = 2L,
+                             knots = NULL,
+                             initial_model = NULL, base_model = NULL,
+                             plots = list()) {
+  structure(
+    list(
+      data = data,
+      outcome = outcome,
+      time_var = time_var,
+      id_var = id_var,
+      sex_var = sex_var,
+      degree = degree,
+      k = k,
+      knots = knots,
+      initial_model = initial_model,
+      base_model = base_model,
+      plots = plots
+    ),
+    class = "lctm_initial"
+  )
 }
