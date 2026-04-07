@@ -38,7 +38,7 @@
 #' }
 #'
 #' @details
-#' This function automates the 5-step LCTM workflow:
+#' This function automates the LCTM workflow:
 #'
 #' 1. **Setup:** Validates data and compares BIC across K values
 #' 2. **Search:** For each K (in BIC order):
