@@ -20,9 +20,9 @@ Creates a comparison table for multiple fitted lctm_model objects.
 \dontrun{
 # After fitting multiple models
 models <- list(
-  "K3_E" = model_k3_e,
-  "K3_F" = model_k3_f,
-  "K4_E" = model_k4_e
+  "K3_A" = model_k3_a,
+  "K3_B" = model_k3_b,
+  "K4_A" = model_k4_a
 )
 compare_models(models)
 }

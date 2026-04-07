@@ -20,7 +20,7 @@ new_lctm_result(
 
 \item{best_k}{Optimal number of classes}
 
-\item{best_model_type}{Which model type ("E" or "F")}
+\item{best_model_type}{Which model type ("A" or "B")}
 
 \item{adequacy}{lctm_adequacy object for best model}
 

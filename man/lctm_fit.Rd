@@ -7,7 +7,7 @@
 lctm_fit(
   setup,
   k,
-  model = "F",
+  model = "B",
   use_splines = FALSE,
   spline_df = 3,
   linear = FALSE,
@@ -19,8 +19,8 @@ lctm_fit(
 
 \item{k}{Integer; number of latent classes to fit.}
 
-\item{model}{Character; model type - "E" (common variance) or "F" (proportional variance).
-Default is "F".}
+\item{model}{Character; model type - "A" (common variance) or "B" (proportional variance).
+Default is "B".}
 
 \item{use_splines}{Logical; if TRUE, adds natural splines to the fixed and mixture
 effects. Can help capture non-polynomial trajectories.}
@@ -38,7 +38,7 @@ An \code{lctm_model} object containing:
 \describe{
 \item{model}{The fitted lcmm hlme model object}
 \item{k}{Number of classes}
-\item{model_type}{Model type ("E" or "F")}
+\item{model_type}{Model type ("A" or "B")}
 \item{bic}{BIC value}
 \item{class_proportions}{Proportion of observations in each class}
 \item{setup}{The lctm_setup object used}
@@ -56,27 +56,32 @@ a specific number of classes.
 
 \strong{Model Types:}
 \describe{
-\item{Model E}{Random quadratic with common variance across classes (nwg = FALSE)}
-\item{Model F}{Random quadratic with proportional variance (nwg = TRUE)}
+\item{Model A}{Random quadratic with common variance across classes (nwg = FALSE)}
+\item{Model B}{Random quadratic with proportional variance (nwg = TRUE)}
 }
 
-Model F is generally preferred as it allows more flexibility in variance structure.
+Model B is generally preferred as it allows more flexibility in variance structure.
 
 \strong{Splines:}
 Adding natural splines (\code{use_splines = TRUE}) can help when trajectories
 don't follow a simple polynomial pattern. The splines are added to both
 the fixed and mixture effects, but not to random effects.
 }
+\note{
+Consider using the new investigator-driven workflow instead:
+\code{lctm_clean() -> lctm_initial() -> lctm_refine()}.
+This function remains available for backward compatibility.
+}
 \examples{
 \dontrun{
 data(sample_growth)
 setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
 
-# Fit Model F with 3 classes
-model <- lctm_fit(setup, k = 3, model = "F")
+# Fit Model B with 3 classes
+model <- lctm_fit(setup, k = 3, model = "B")
 
 # Try with splines if adequacy fails
-model_splines <- lctm_fit(setup, k = 3, model = "F", use_splines = TRUE)
+model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
 }
 
 }

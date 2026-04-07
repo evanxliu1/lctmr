@@ -67,6 +67,11 @@ class analysis.
 The output provides a ranked list of K values (K >= 2) to try in subsequent
 model fitting with \code{\link[=lctm_fit]{lctm_fit()}}.
 }
+\note{
+Consider using the new investigator-driven workflow instead:
+\code{lctm_clean() -> lctm_initial() -> lctm_refine()}.
+This function remains available for backward compatibility.
+}
 \examples{
 \dontrun{
 data(sample_growth)

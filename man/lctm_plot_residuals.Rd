@@ -21,7 +21,7 @@ Creates diagnostic residual plots for a fitted LCTM model.
 }
 \examples{
 \dontrun{
-model <- lctm_fit(setup, k = 3, model = "F")
+model <- lctm_fit(setup, k = 3, model = "B")
 lctm_plot_residuals(model)
 }
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/lctm_plot.R
 \name{lctm_plot_trajectories}
 \alias{lctm_plot_trajectories}
-\title{Plot LCTM Trajectories (Step 5)}
+\title{Plot LCTM Trajectories}
 \usage{
 lctm_plot_trajectories(
   model,
@@ -40,7 +40,7 @@ ggplot objects (if type is "both").
 Creates visualizations of fitted latent class trajectories.
 }
 \details{
-This function performs Step 5 of the LCTM workflow - visualizing the results.
+This function visualizes the fitted LCTM results.
 
 \strong{Plot Types:}
 \describe{
@@ -55,7 +55,7 @@ useful for seeing within-class variation.}
 \dontrun{
 data(sample_growth)
 setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-model <- lctm_fit(setup, k = 3, model = "F")
+model <- lctm_fit(setup, k = 3, model = "B")
 
 # Mean trajectory plot
 lctm_plot_trajectories(model, type = "mean")

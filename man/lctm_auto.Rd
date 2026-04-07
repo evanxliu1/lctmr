@@ -10,7 +10,7 @@ lctm_auto(
   time_var,
   id_var,
   k_range = 2:7,
-  models = c("F", "E"),
+  models = c("B", "A"),
   adequacy_thresholds = list(appa = 0.7, occ = 5, entropy = 0.5),
   try_splines = TRUE,
   try_linear = TRUE,
@@ -30,7 +30,7 @@ lctm_auto(
 \item{k_range}{Integer vector of K values to search (default 2:7).
 K=1 is excluded because LCTM requires at least 2 classes.}
 
-\item{models}{Character vector of model types to try (default c("E", "F")).}
+\item{models}{Character vector of model types to try (default c("B", "A")).}
 
 \item{adequacy_thresholds}{List of adequacy thresholds:
 \describe{
@@ -52,7 +52,7 @@ An \code{lctm_result} object containing:
 \describe{
 \item{best_model}{The best lctm_model object that passed adequacy, or NULL}
 \item{best_k}{Number of classes in best model}
-\item{best_model_type}{Model type of best model ("E" or "F")}
+\item{best_model_type}{Model type of best model ("A" or "B")}
 \item{adequacy}{lctm_adequacy object for best model}
 \item{bic_table}{BIC comparison table from setup}
 \item{all_models}{List of all fitted models (optional)}
@@ -65,12 +65,12 @@ Performs a complete latent class trajectory modeling analysis automatically,
 selecting the best model that meets adequacy criteria.
 }
 \details{
-This function automates the 5-step LCTM workflow:
+This function automates the LCTM workflow:
 \enumerate{
 \item \strong{Setup:} Validates data and compares BIC across K values
 \item \strong{Search:} For each K (in BIC order):
 \itemize{
-\item Tries Model F, then Model E
+\item Tries Model B, then Model A
 \item If adequacy fails and \code{try_splines = TRUE}, tries with splines
 \item If adequacy fails and \code{try_linear = TRUE}, tries linear model
 }
@@ -78,6 +78,11 @@ This function automates the 5-step LCTM workflow:
 }
 
 If no model passes adequacy, returns result with \code{best_model = NULL}.
+}
+\note{
+Consider using the new investigator-driven workflow instead:
+\code{lctm_clean() -> lctm_initial() -> lctm_refine()}.
+This function remains available for backward compatibility.
 }
 \examples{
 \dontrun{

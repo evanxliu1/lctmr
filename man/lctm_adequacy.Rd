@@ -19,14 +19,15 @@ lctm_adequacy(model, thresholds = list(appa = 0.7, occ = 5, entropy = 0.5))
 \value{
 An \code{lctm_adequacy} object containing:
 \describe{
-\item{appa}{Named vector of APPA values per class}
+\item{appa}{Named vector of APPA values per class (NA for empty classes)}
 \item{appa_pass}{Logical; TRUE if all APPA values meet threshold}
-\item{occ}{Named vector of OCC values per class}
+\item{occ}{Named vector of OCC values per class (NA/Inf for empty classes)}
 \item{occ_pass}{Logical; TRUE if all OCC values meet threshold}
 \item{entropy}{Relative entropy value}
 \item{entropy_pass}{Logical; TRUE if entropy meets threshold}
 \item{overall_pass}{Logical; TRUE if ALL criteria are met}
 \item{thresholds}{List of threshold values used}
+\item{is_degenerate}{Logical; TRUE if model has empty classes (degenerate)}
 }
 }
 \description{
@@ -52,21 +53,21 @@ If adequacy fails, consider:
 \item Trying a different number of classes (K)
 \item Using splines (\code{use_splines = TRUE} in \code{\link[=lctm_fit]{lctm_fit()}})
 \item Using linear instead of quadratic model
-\item Trying the other model type (E vs F)
+\item Trying the other model type (A vs B)
 }
 }
 \examples{
 \dontrun{
 data(sample_growth)
 setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-model <- lctm_fit(setup, k = 3, model = "F")
+model <- lctm_fit(setup, k = 3, model = "B")
 
 adequacy <- lctm_adequacy(model)
 print(adequacy)
 
 if (!adequacy$overall_pass) {
   # Try with splines
-  model_splines <- lctm_fit(setup, k = 3, model = "F", use_splines = TRUE)
+  model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
   adequacy_splines <- lctm_adequacy(model_splines)
 }
 }

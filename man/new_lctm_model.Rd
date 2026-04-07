@@ -20,7 +20,7 @@ new_lctm_model(
 
 \item{k}{Number of classes}
 
-\item{model_type}{Model type ("E" or "F")}
+\item{model_type}{Model type ("A" or "B")}
 
 \item{bic}{BIC value}
 

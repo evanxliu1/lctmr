@@ -12,7 +12,8 @@ new_lctm_adequacy(
   entropy,
   entropy_pass,
   overall_pass,
-  thresholds
+  thresholds,
+  is_degenerate = FALSE
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ new_lctm_adequacy(
 \item{overall_pass}{Logical, whether all criteria are met}
 
 \item{thresholds}{List of threshold values used}
+
+\item{is_degenerate}{Logical, whether model is degenerate (has empty classes)}
 }
 \value{
 An lctm_adequacy object
