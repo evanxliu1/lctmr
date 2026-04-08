@@ -299,6 +299,11 @@ lctm_refine <- function(initial,
         )
         hlme_model <- do.call(lcmm::hlme, hlme_args)
 
+        # Check convergence before proceeding
+        if (hlme_model$conv != 1) {
+          stop("Did not converge (code: ", hlme_model$conv, ")")
+        }
+
         class_counts <- table(factor(hlme_model$pprob$class, levels = seq_len(k)))
         class_proportions <- as.numeric(prop.table(class_counts))
         names(class_proportions) <- paste0("Class", seq_len(k))
