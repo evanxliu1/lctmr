@@ -90,28 +90,16 @@ summary(result)
 plot(result)
 ```
 
-### Option B: Fully Automated
+### Splines as an alternative trajectory form
 
-Best for quick exploratory analyses. The automated function handles all decisions internally.
+When residual diagnostics show non-polynomial patterns (e.g., a distinct change of slope around 6–12 months), specify natural-spline `knots` instead of a polynomial `degree`:
 
-```{r auto-example, eval = FALSE}
-result <- lctm_auto(
-  sample_growth,
-  outcome = "weight_raw",
-  time_var = "anthroage",
-  id_var = "childid"
-)
-
-summary(result)
-plot(result)
+```{r splines-example, eval = FALSE}
+initial_sp <- lctm_initial(cleaned, k = 3, knots = c(6, 12))
+result_sp  <- lctm_refine(initial_sp, knots = c(6, 12), k_range = 2:5)
 ```
 
-The automated function:
-
-1. Tests multiple K values (number of classes)
-2. Fits both Model B (proportional variance) and Model A (common variance)
-3. Checks adequacy metrics automatically
-4. Returns the best passing model
+`lctm_refine()` carries the same `knots` through to all candidate models for a like-for-like comparison.
 
 ## Understanding Model Types
 
@@ -140,5 +128,4 @@ A model passes adequacy if **all three** metrics meet their thresholds.
 
 - See `vignette("workflow")` for detailed explanation of the 4-step methodology
 - See `?lctm_initial` and `?lctm_refine` for the investigator-driven workflow
-- See `?lctm_auto` for the automated option
-- See `?lctm_plot_trajectories` for visualization options
+- See `?lctm_plot_trajectories` for visualization options (legend includes per-class n and %)

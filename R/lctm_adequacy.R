@@ -3,7 +3,7 @@
 #' Evaluates whether a fitted LCTM model meets adequacy criteria for
 #' class separation and classification accuracy.
 #'
-#' @param model An `lctm_model` object from [lctm_fit()].
+#' @param model An `lctm_model` object (e.g., `result$best_model` from [lctm_refine()]).
 #' @param thresholds A named list of threshold values:
 #' \describe{
 #'   \item{appa}{Minimum APPA value (default 0.70)}
@@ -39,25 +39,20 @@
 #' }
 #'
 #' If adequacy fails, consider:
-#' - Trying a different number of classes (K)
-#' - Using splines (`use_splines = TRUE` in [lctm_fit()])
-#' - Using linear instead of quadratic model
+#' - Trying a different number of classes (`k_range` in [lctm_refine()])
+#' - Using splines (`knots` argument in [lctm_initial()]/[lctm_refine()])
+#' - Using a different polynomial degree
 #' - Trying the other model type (A vs B)
 #'
 #' @examples
 #' \dontrun{
 #' data(sample_growth)
-#' setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-#' model <- lctm_fit(setup, k = 3, model = "B")
+#' cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid")
+#' init <- lctm_initial(cleaned, k = 2, degree = 2)
+#' result <- lctm_refine(init, k_range = 2:4)
 #'
-#' adequacy <- lctm_adequacy(model)
+#' adequacy <- lctm_adequacy(result$best_model)
 #' print(adequacy)
-#'
-#' if (!adequacy$overall_pass) {
-#'   # Try with splines
-#'   model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
-#'   adequacy_splines <- lctm_adequacy(model_splines)
-#' }
 #' }
 #'
 #' @export
@@ -66,7 +61,7 @@ lctm_adequacy <- function(model,
 
   # Validate inputs
   if (!inherits(model, "lctm_model")) {
-    stop("model must be an lctm_model object from lctm_fit()", call. = FALSE)
+    stop("model must be an lctm_model object (from lctm_refine())", call. = FALSE)
   }
 
   # Set default thresholds if not provided

@@ -261,7 +261,7 @@ lctm_refine <- function(initial,
   best_model <- NULL
   best_adequacy <- NULL
 
-  # Create a temporary lctm_setup for adequacy checking compatibility
+  # Internal setup holder used as context for fitted models
   temp_setup <- new_lctm_setup(
     data = data,
     outcome = outcome,
@@ -412,31 +412,9 @@ lctm_refine <- function(initial,
     grDevices::pdf(save_pdf, width = 10, height = 7)
     on.exit(grDevices::dev.off(), add = TRUE)
     tryCatch({
-      # Mean trajectory plot
-      result_colors <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                         "#FF7F00", "#FFFF33", "#A65628")[seq_len(best_model$k)]
-      mean_plot <- .create_mean_plot(
-        best_model,
-        range(data[[time_var]], na.rm = TRUE),
-        100, TRUE, result_colors
-      )
-      print(mean_plot)
-
-      # Spaghetti plot with class assignments
-      plot_data <- data
-      pprob_df <- data.frame(
-        id = best_model$model$pprob[[1]],
-        class = factor(best_model$model$pprob$class)
-      )
-      names(pprob_df)[1] <- id_var
-      plot_data <- merge(plot_data, pprob_df, by = id_var, all.x = TRUE)
-
-      spaghetti_plot <- .create_spaghetti_plot(
-        plot_data, outcome, time_var, id_var,
-        range(data[[time_var]], na.rm = TRUE),
-        result_colors, 0.3
-      )
-      print(spaghetti_plot)
+      # Use the public plot interface so legend labels include n and %
+      print(lctm_plot_trajectories(best_model, type = "mean",  ci = TRUE))
+      print(lctm_plot_trajectories(best_model, type = "spaghetti"))
     }, error = function(e) {
       if (verbose) message("Warning: Could not generate PDF plots: ", e$message)
     })

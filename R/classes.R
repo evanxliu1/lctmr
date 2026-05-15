@@ -214,7 +214,7 @@ validate_lctm_adequacy <- function(x) {
 }
 
 # -----------------------------------------------------------------------------
-# lctm_result class (for lctm_auto output)
+# lctm_result class (for lctm_refine output)
 # -----------------------------------------------------------------------------
 
 #' Create a new lctm_result object

@@ -2,7 +2,7 @@
 #'
 #' Creates visualizations of fitted latent class trajectories.
 #'
-#' @param model An `lctm_model` object from [lctm_fit()].
+#' @param model An `lctm_model` object (e.g., `result$best_model` from [lctm_refine()]).
 #' @param type Character; type of plot - "mean" for mean trajectories,
 #'   "spaghetti" for individual trajectories, or "both" for both plots.
 #' @param ci Logical; if TRUE, adds confidence intervals to mean trajectory plot.
@@ -31,17 +31,18 @@
 #' @examples
 #' \dontrun{
 #' data(sample_growth)
-#' setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-#' model <- lctm_fit(setup, k = 3, model = "B")
+#' cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid")
+#' init <- lctm_initial(cleaned, k = 2, degree = 2)
+#' result <- lctm_refine(init, k_range = 2:4)
 #'
-#' # Mean trajectory plot
-#' lctm_plot_trajectories(model, type = "mean")
+#' # Mean trajectory plot (legend shows n and % per class)
+#' lctm_plot_trajectories(result$best_model, type = "mean")
 #'
 #' # Spaghetti plot
-#' lctm_plot_trajectories(model, type = "spaghetti")
+#' lctm_plot_trajectories(result$best_model, type = "spaghetti")
 #'
 #' # Both plots
-#' plots <- lctm_plot_trajectories(model, type = "both")
+#' plots <- lctm_plot_trajectories(result$best_model, type = "both")
 #' plots$mean
 #' plots$spaghetti
 #' }
@@ -57,7 +58,7 @@ lctm_plot_trajectories <- function(model,
 
   # Validate inputs
   if (!inherits(model, "lctm_model")) {
-    stop("model must be an lctm_model object from lctm_fit()", call. = FALSE)
+    stop("model must be an lctm_model object (from lctm_refine())", call. = FALSE)
   }
 
   if (!type %in% c("mean", "spaghetti", "both")) {
@@ -86,27 +87,41 @@ lctm_plot_trajectories <- function(model,
   # Get class assignments and merge back to data
   if (k == 1) {
     data$class <- factor(1)
+    n_subjects <- length(unique(data[[id_var]]))
+    class_counts <- setNames(n_subjects, "1")
   } else {
     # Get class assignments from pprob table (one row per subject)
     pprob_table <- model$model$pprob
     class_df <- data.frame(
       id = pprob_table[[1]],
-      class = factor(pprob_table$class)
+      class = factor(pprob_table$class, levels = seq_len(k))
     )
     names(class_df)[1] <- id_var
+
+    class_counts <- table(class_df$class)
 
     # Merge back to full data
     data <- merge(data, class_df, by = id_var, all.x = TRUE)
   }
 
+  # Build legend labels: "Class k (n=X, Y%)"
+  n_total <- sum(class_counts)
+  class_labels <- vapply(seq_len(k), function(i) {
+    n_i <- as.integer(class_counts[i])
+    pct_i <- 100 * n_i / n_total
+    sprintf("Class %d (n=%d, %.1f%%)", i, n_i, pct_i)
+  }, character(1))
+
   # Generate plots based on type
   if (type == "mean" || type == "both") {
-    mean_plot <- .create_mean_plot(model, time_range, n_points, ci, colors)
+    mean_plot <- .create_mean_plot(model, time_range, n_points, ci, colors,
+                                   class_labels)
   }
 
   if (type == "spaghetti" || type == "both") {
     spaghetti_plot <- .create_spaghetti_plot(data, outcome, time_var, id_var,
-                                             time_range, colors, alpha)
+                                             time_range, colors, alpha,
+                                             class_labels)
   }
 
   # Return based on type
@@ -121,7 +136,8 @@ lctm_plot_trajectories <- function(model,
 
 #' Create Mean Trajectory Plot
 #' @keywords internal
-.create_mean_plot <- function(model, time_range, n_points, ci, colors) {
+.create_mean_plot <- function(model, time_range, n_points, ci, colors,
+                              class_labels = NULL) {
   setup <- model$setup
   time_var <- setup$time_var
   outcome <- setup$outcome
@@ -165,12 +181,14 @@ lctm_plot_trajectories <- function(model,
 
   pred_df <- do.call(rbind, pred_list)
 
+  if (is.null(class_labels)) class_labels <- paste("Class", seq_len(k))
+
   # Create the plot
   p <- ggplot2::ggplot(pred_df, ggplot2::aes(x = .data$time, y = .data$pred,
                                               color = .data$class)) +
     ggplot2::geom_line(linewidth = 1) +
     ggplot2::scale_color_manual(values = colors,
-                                labels = paste("Class", seq_len(k))) +
+                                labels = class_labels) +
     ggplot2::labs(
       title = "Mean Trajectories by Class",
       x = time_var,
@@ -190,7 +208,7 @@ lctm_plot_trajectories <- function(model,
                                          fill = .data$class),
                            alpha = 0.2, color = NA) +
       ggplot2::scale_fill_manual(values = colors,
-                                 labels = paste("Class", seq_len(k)),
+                                 labels = class_labels,
                                  guide = "none")
   }
 
@@ -200,8 +218,11 @@ lctm_plot_trajectories <- function(model,
 #' Create Spaghetti Plot
 #' @keywords internal
 .create_spaghetti_plot <- function(data, outcome, time_var, id_var,
-                                   time_range, colors, alpha) {
+                                   time_range, colors, alpha,
+                                   class_labels = NULL) {
   k <- length(unique(data$class))
+
+  if (is.null(class_labels)) class_labels <- paste("Class", seq_len(k))
 
   p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[time_var]],
                                            y = .data[[outcome]],
@@ -209,7 +230,7 @@ lctm_plot_trajectories <- function(model,
                                            color = .data$class)) +
     ggplot2::geom_line(alpha = alpha) +
     ggplot2::scale_color_manual(values = colors,
-                                labels = paste("Class", seq_len(k))) +
+                                labels = class_labels) +
     ggplot2::labs(
       title = "Individual Trajectories by Class",
       x = time_var,
@@ -230,7 +251,7 @@ lctm_plot_trajectories <- function(model,
 #'
 #' Creates diagnostic residual plots for a fitted LCTM model.
 #'
-#' @param model An `lctm_model` object from [lctm_fit()].
+#' @param model An `lctm_model` object (e.g., `result$best_model` from [lctm_refine()]).
 #' @param standardized Logical; if TRUE (default), plots standardized residuals.
 #' @param by_class Logical; if TRUE (default), facets by class assignment.
 #'
@@ -238,8 +259,8 @@ lctm_plot_trajectories <- function(model,
 #'
 #' @examples
 #' \dontrun{
-#' model <- lctm_fit(setup, k = 3, model = "B")
-#' lctm_plot_residuals(model)
+#' result <- lctm_refine(init, k_range = 2:4)
+#' lctm_plot_residuals(result$best_model)
 #' }
 #'
 #' @export
@@ -248,7 +269,7 @@ lctm_plot_residuals <- function(model,
                                 by_class = TRUE) {
 
   if (!inherits(model, "lctm_model")) {
-    stop("model must be an lctm_model object from lctm_fit()", call. = FALSE)
+    stop("model must be an lctm_model object (from lctm_refine())", call. = FALSE)
   }
 
   setup <- model$setup

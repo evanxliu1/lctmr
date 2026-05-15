@@ -61,17 +61,13 @@ lctm_plot_*()       Visualize and interpret results
 3. **Refine** (`lctm_refine`) - Automates BIC comparison across K values, tests Model A (common variance) and Model B (proportional variance), checks adequacy criteria
 4. **Interpret results** - Mean trajectory plots, spaghetti plots, class assignments
 
-### Automated Alternative
+### Splines
 
-For quick exploratory analyses, `lctm_auto()` handles all decisions automatically:
+`lctm_initial()` and `lctm_refine()` accept a `knots` argument for natural splines (via `splines::ns()`), useful when residual diagnostics show non-polynomial patterns (e.g., distinct early vs. late growth phases):
 
 ```r
-result <- lctm_auto(
-  sample_growth,
-  outcome = "weight_raw",
-  time_var = "anthroage",
-  id_var = "childid"
-)
+init <- lctm_initial(cleaned, k = 3, knots = c(6, 12))
+result <- lctm_refine(init, knots = c(6, 12), k_range = 2:5)
 ```
 
 ## Functions
@@ -81,12 +77,10 @@ result <- lctm_auto(
 | Workflow | `lctm_clean()` | Data preparation and outlier detection |
 | Workflow | `lctm_initial()` | Initial model with diagnostic plots and residual guide |
 | Workflow | `lctm_refine()` | Automated refinement: BIC search + Model A/B + adequacy |
-| Automated | `lctm_auto()` | Fully automated analysis |
-| Legacy | `lctm_setup()` / `lctm_fit()` | Step-by-step model fitting |
 | Adequacy | `lctm_adequacy()` | Evaluate APPA, OCC, and relative entropy |
 | Low-level | `calc_appa()` / `calc_occ()` / `calc_relative_entropy()` | Individual adequacy metrics |
-| Utility | `assign_classes()` / `compare_models()` | Helper functions |
-| Visualization | `lctm_plot_trajectories()` | Mean and spaghetti trajectory plots |
+| Utility | `assign_classes()` | Class assignment from posterior probabilities |
+| Visualization | `lctm_plot_trajectories()` | Mean and spaghetti trajectory plots (legend shows n, %) |
 | Visualization | `lctm_plot_residuals()` | Residual diagnostic plots |
 
 ## Model Adequacy Metrics

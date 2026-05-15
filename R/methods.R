@@ -6,60 +6,6 @@
 NULL
 
 # =============================================================================
-# lctm_setup methods
-# =============================================================================
-
-#' @export
-print.lctm_setup <- function(x, ...) {
-  cat("LCTM Setup\n")
-  cat("----------\n")
-  cat("Outcome:", x$outcome, "\n")
-  cat("Time variable:", x$time_var, "\n")
-  cat("ID variable:", x$id_var, "\n")
-  cat("Polynomial degree:", x$degree, ifelse(x$degree == 2, "(quadratic)", "(linear)"), "\n")
-  cat("Observations:", nrow(x$data), "\n")
-  cat("Subjects:", length(unique(x$data[[x$id_var]])), "\n")
-  cat("\n")
-  cat("BIC Comparison (ranked by BIC, lower is better):\n")
-  print(x$bic_table, row.names = FALSE)
-  cat("\nNote: K=1 is shown for reference only (no latent classes).\n")
-  cat("      LCTM requires K >= 2 to identify trajectory groups.\n")
-  cat("\nRecommended K values to try:", paste(head(x$k_ranking, 3), collapse = ", "), "\n")
-  invisible(x)
-}
-
-#' @export
-summary.lctm_setup <- function(object, ...) {
-  cat("LCTM Setup Summary\n")
-  cat("==================\n\n")
-
-  cat("Data:\n")
-  cat("  Outcome variable:", object$outcome, "\n")
-  cat("  Time variable:", object$time_var, "\n")
-  cat("  ID variable:", object$id_var, "\n")
-  cat("  Total observations:", nrow(object$data), "\n")
-  cat("  Unique subjects:", length(unique(object$data[[object$id_var]])), "\n")
-  cat("  Time range:", paste(range(object$data[[object$time_var]], na.rm = TRUE), collapse = " - "), "\n")
-  cat("  Outcome range:", paste(round(range(object$data[[object$outcome]], na.rm = TRUE), 2), collapse = " - "), "\n")
-  cat("\n")
-
-  cat("Model specification:\n")
-  cat("  Polynomial degree:", object$degree, "\n")
-  cat("\n")
-
-  cat("BIC Comparison:\n")
-  print(object$bic_table, row.names = FALSE)
-  cat("\n")
-  cat("Note: K=1 is reference only (no latent classes).\n\n")
-
-  cat("Recommendation (K >= 2):\n")
-  cat("  Best K for LCTM:", object$k_ranking[1], "\n")
-  cat("  Next best:", paste(head(object$k_ranking[-1], 2), collapse = ", "), "\n")
-
-  invisible(object)
-}
-
-# =============================================================================
 # lctm_model methods
 # =============================================================================
 
@@ -163,9 +109,9 @@ print.lctm_adequacy <- function(x, ...) {
       cat("\nReason: Degenerate model (empty classes detected)\n")
     }
     cat("\nSuggestions:\n")
-    cat("  - Try a different number of classes (K)\n")
-    cat("  - Try adding splines (use_splines = TRUE)\n")
-    cat("  - Try linear model (linear = TRUE)\n")
+    cat("  - Try a different number of classes (k_range in lctm_refine)\n")
+    cat("  - Try adding splines (knots argument in lctm_initial/lctm_refine)\n")
+    cat("  - Try a different polynomial degree\n")
     cat("  - Try the other model type (A vs B)\n")
   }
   cat("========================================\n")
@@ -174,7 +120,7 @@ print.lctm_adequacy <- function(x, ...) {
 }
 
 # =============================================================================
-# lctm_result methods (for lctm_auto / lctm_refine output)
+# lctm_result methods (for lctm_refine output)
 # =============================================================================
 
 #' @export
@@ -187,7 +133,7 @@ print.lctm_result <- function(x, ...) {
     cat("Consider:\n")
     cat("  - Expanding the search range\n")
     cat("  - Adjusting adequacy thresholds\n")
-    cat("  - Manual exploration with lctm_setup() and lctm_fit()\n")
+    cat("  - Trying a different random effects structure in lctm_refine()\n")
   } else {
     cat("Best Model Found:\n")
     cat("  Model type:", x$best_model_type, "\n")

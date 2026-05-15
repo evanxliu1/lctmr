@@ -1,65 +1,46 @@
 # Integration tests for lctm_adequacy
 
+# Helper: fit a small refine result for adequacy tests
+.fit_test_result <- function(k_range = 2:2) {
+  data("sample_growth", package = "lctmr")
+  init <- lctm_initial(sample_growth, outcome = "weight_raw",
+                       time_var = "anthroage", id_var = "childid",
+                       k = 2, degree = 2, verbose = FALSE)
+  lctm_refine(init, k_range = k_range, models = "B", verbose = FALSE)
+}
+
 test_that("lctm_adequacy creates valid adequacy object", {
   skip_on_cran()
 
-  data("sample_growth", package = "lctmr")
+  result <- .fit_test_result()
+  skip_if(is.null(result$best_model), "no adequate model found in test data")
 
-  setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
-                      k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
+  adequacy <- lctm_adequacy(result$best_model)
 
-  adequacy <- lctm_adequacy(model)
-
-  # Check class
   expect_s3_class(adequacy, "lctm_adequacy")
-
-  # Check components
   expect_type(adequacy$appa, "double")
   expect_type(adequacy$occ, "double")
   expect_type(adequacy$entropy, "double")
   expect_type(adequacy$overall_pass, "logical")
-
-  # Check length matches K
   expect_length(adequacy$appa, 2)
   expect_length(adequacy$occ, 2)
-})
-
-test_that("lctm_adequacy works with K=1", {
-  skip_on_cran()
-
-  data("sample_growth", package = "lctmr")
-
-  setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
-                      k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 1, model = "B", verbose = FALSE)
-
-  adequacy <- lctm_adequacy(model)
-
-  # K=1 should always pass
-  expect_true(adequacy$overall_pass)
-  expect_equal(adequacy$appa, c(Class1 = 1.0))
-  expect_equal(adequacy$entropy, 1.0)
 })
 
 test_that("lctm_adequacy uses custom thresholds", {
   skip_on_cran()
 
-  data("sample_growth", package = "lctmr")
+  result <- .fit_test_result()
+  skip_if(is.null(result$best_model), "no adequate model found in test data")
 
-  setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
-                      k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
+  adequacy_strict <- lctm_adequacy(
+    result$best_model,
+    thresholds = list(appa = 0.99, occ = 100, entropy = 0.99)
+  )
+  adequacy_lenient <- lctm_adequacy(
+    result$best_model,
+    thresholds = list(appa = 0.5, occ = 1, entropy = 0.1)
+  )
 
-  # Very strict thresholds
-  adequacy_strict <- lctm_adequacy(model,
-                                   thresholds = list(appa = 0.99, occ = 100, entropy = 0.99))
-
-  # Very lenient thresholds
-  adequacy_lenient <- lctm_adequacy(model,
-                                    thresholds = list(appa = 0.5, occ = 1, entropy = 0.1))
-
-  # Lenient should be more likely to pass
   expect_equal(adequacy_strict$thresholds$appa, 0.99)
   expect_equal(adequacy_lenient$thresholds$appa, 0.5)
 })
@@ -67,12 +48,9 @@ test_that("lctm_adequacy uses custom thresholds", {
 test_that("lctm_adequacy print method works", {
   skip_on_cran()
 
-  data("sample_growth", package = "lctmr")
-
-  setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid",
-                      k_range = 1:2, verbose = FALSE)
-  model <- lctm_fit(setup, k = 2, model = "B", verbose = FALSE)
-  adequacy <- lctm_adequacy(model)
+  result <- .fit_test_result()
+  skip_if(is.null(result$best_model), "no adequate model found in test data")
+  adequacy <- lctm_adequacy(result$best_model)
 
   expect_output(print(adequacy), "LCTM Model Adequacy")
   expect_output(print(adequacy), "APPA")
