@@ -15,8 +15,9 @@
 #' @param covariates Character vector of covariate names to add to the fixed
 #'   formula. Covariates are added to `fixed` only, not `mixture` (covariates
 #'   adjust overall mean, not class-specific trajectory shape).
-#' @param models Character vector of model types to compare (default `c("B", "A")`).
-#'   Model B = proportional variance (nwg=TRUE), Model A = common variance (nwg=FALSE).
+#' @param models Character vector of model types to compare (default `c("A", "B")`).
+#'   Model A = common variance across groups (nwg=FALSE), Model B = proportional
+#'   variance (nwg=TRUE). The search tries Model A first, then Model B.
 #' @param adequacy_thresholds List of adequacy thresholds:
 #' \describe{
 #'   \item{appa}{Minimum APPA (default 0.70)}
@@ -54,7 +55,8 @@
 #' The search proceeds as follows:
 #' 1. Fit a base model (ng=1) with the refined formulas for starting values
 #' 2. Compare BIC across K values in `k_range`
-#' 3. For each K (in BIC order), try Model B then A
+#' 3. For each K (in BIC order), try the model types in `models` order
+#'    (default: Model A first, then Model B)
 #' 4. Stop at the first model that passes all adequacy criteria
 #'
 #' @examples
@@ -90,7 +92,7 @@ lctm_refine <- function(initial,
                         degree = NULL,
                         knots = NULL,
                         covariates = NULL,
-                        models = c("B", "A"),
+                        models = c("A", "B"),
                         adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5),
                         start_simple = FALSE,
                         save_pdf = NULL,
@@ -168,15 +170,32 @@ lctm_refine <- function(initial,
   if (verbose) message("\n=== LCTM Refine Analysis ===\n")
 
   # Step 1: Fit base model (ng=1)
+  # The base model must use the full random_formula so its parameter vector
+  # matches what the multi-class fits expect when passed via B. When
+  # start_simple = TRUE, we first fit a cheap ng=1 with random = ~ 1 to seed
+  # the full-random ng=1 fit, but the object handed to multi-class fits is
+  # always the full-random ng=1 model.
   if (start_simple) {
-    if (verbose) message("Fitting simple base model (no random effects) for starting values...")
-    base_args <- list(
+    if (verbose) message("Fitting simple ng=1 model (random = ~ 1) to seed starting values...")
+    simple_args <- list(
       fixed = fixed_formula,
       random = ~ 1,
       ng = 1,
       idiag = FALSE,
       data = data,
       subject = id_var
+    )
+    simple_base <- do.call(lcmm::hlme, simple_args)
+
+    if (verbose) message("Fitting full ng=1 base model using simple model as starting values...")
+    base_args <- list(
+      fixed = fixed_formula,
+      random = random_formula,
+      ng = 1,
+      idiag = FALSE,
+      data = data,
+      subject = id_var,
+      B = simple_base
     )
   } else {
     if (verbose) message("Fitting base model with refined formulas...")
@@ -204,6 +223,10 @@ lctm_refine <- function(initial,
     stringsAsFactors = FALSE
   )
 
+  # Use the first model type in `models` for the BIC pre-screen so the
+  # ranking reflects the model the user wants tried first.
+  bic_screen_nwg <- (models[1] == "B")
+
   for (k in k_range) {
     if (verbose) message("  Fitting K = ", k, "...")
     tryCatch({
@@ -212,7 +235,7 @@ lctm_refine <- function(initial,
         mixture = mixture_formula,
         random = random_formula,
         ng = k,
-        nwg = TRUE,
+        nwg = bic_screen_nwg,
         idiag = FALSE,
         data = data,
         subject = id_var,
