@@ -175,44 +175,50 @@ lctm_refine <- function(initial,
 
   # Step 1: Fit base model (ng=1)
   # The base model must use the full random_formula so its parameter vector
-  # matches what the multi-class fits expect when passed via B. When
-  # start_simple = TRUE, we first fit a cheap ng=1 with random = ~ 1 to seed
-  # the full-random ng=1 fit, but the object handed to multi-class fits is
-  # always the full-random ng=1 model.
+  # matches what the multi-class fits expect when passed via B.
+  #
+  # When start_simple = TRUE, we try to seed the full-random ng=1 fit from a
+  # cheap ng=1 with random = ~ 1. lcmm only accepts a `B` seed whose parameter
+  # vector matches the model being fit, so for richer random structures (e.g.
+  # cubic) this seeding can be rejected with an internal error. We therefore
+  # attempt it inside tryCatch and fall back to fitting the full base directly.
+  # Either way, base_model is the full-random ng=1 model handed to Step 2.
+  full_base_args <- list(
+    fixed = fixed_formula,
+    random = random_formula,
+    ng = 1,
+    idiag = FALSE,
+    data = data,
+    subject = id_var
+  )
+
+  base_model <- NULL
   if (start_simple) {
     if (verbose) message("Fitting simple ng=1 model (random = ~ 1) to seed starting values...")
-    simple_args <- list(
-      fixed = fixed_formula,
-      random = ~ 1,
-      ng = 1,
-      idiag = FALSE,
-      data = data,
-      subject = id_var
+    simple_base <- tryCatch(
+      do.call(lcmm::hlme, list(
+        fixed = fixed_formula, random = ~ 1, ng = 1, idiag = FALSE,
+        data = data, subject = id_var
+      )),
+      error = function(e) NULL
     )
-    simple_base <- do.call(lcmm::hlme, simple_args)
-
-    if (verbose) message("Fitting full ng=1 base model using simple model as starting values...")
-    base_args <- list(
-      fixed = fixed_formula,
-      random = random_formula,
-      ng = 1,
-      idiag = FALSE,
-      data = data,
-      subject = id_var,
-      B = simple_base
-    )
-  } else {
-    if (verbose) message("Fitting base model with refined formulas...")
-    base_args <- list(
-      fixed = fixed_formula,
-      random = random_formula,
-      ng = 1,
-      idiag = FALSE,
-      data = data,
-      subject = id_var
-    )
+    if (!is.null(simple_base)) {
+      if (verbose) message("Fitting full ng=1 base model using simple model as starting values...")
+      base_model <- tryCatch(
+        do.call(lcmm::hlme, c(full_base_args, list(B = simple_base))),
+        error = function(e) {
+          if (verbose) message("  Seeding from the simple model failed (",
+                               conditionMessage(e),
+                               "); fitting the full base directly instead.")
+          NULL
+        }
+      )
+    }
   }
-  base_model <- do.call(lcmm::hlme, base_args)
+  if (is.null(base_model)) {
+    if (verbose) message("Fitting base model with refined formulas...")
+    base_model <- do.call(lcmm::hlme, full_base_args)
+  }
 
   # Step 2: BIC comparison across k_range
   k_range <- k_range[k_range >= 2]
