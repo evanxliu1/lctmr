@@ -175,7 +175,9 @@ new_lctm_adequacy <- function(appa,
                               entropy_pass,
                               overall_pass,
                               thresholds,
-                              is_degenerate = FALSE) {
+                              is_degenerate = FALSE,
+                              class_proportions = NULL,
+                              min_prop_pass = NA) {
   structure(
     list(
       appa = appa,
@@ -186,7 +188,11 @@ new_lctm_adequacy <- function(appa,
       entropy_pass = entropy_pass,
       overall_pass = overall_pass,
       thresholds = thresholds,
-      is_degenerate = is_degenerate
+      is_degenerate = is_degenerate,
+      # Reported but intentionally NOT part of overall_pass: the minimum
+      # class-proportion floor is investigator-driven, not an auto-reject gate.
+      class_proportions = class_proportions,
+      min_prop_pass = min_prop_pass
     ),
     class = "lctm_adequacy"
   )

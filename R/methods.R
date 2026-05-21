@@ -99,6 +99,29 @@ print.lctm_adequacy <- function(x, ...) {
   cat("  Value:", round(x$entropy, 3), "[",
       ifelse(x$entropy_pass, "PASS", "FAIL"), "]\n\n")
 
+  # Minimum class proportion (REPORT ONLY -- not part of overall pass)
+  if (!is.null(x$class_proportions)) {
+    mp <- x$thresholds$min_prop
+    cat("Minimum class proportion (floor =", mp,
+        ") [report only, not part of overall]:\n")
+    for (i in seq_along(x$class_proportions)) {
+      p <- x$class_proportions[i]
+      status <- ifelse(is.na(p), "N/A",
+                       ifelse(p >= mp, "ok", "BELOW FLOOR"))
+      cat("  ", names(x$class_proportions)[i], ": ",
+          round(100 * p, 1), "% [", status, "]\n", sep = "")
+    }
+    cat("  All classes meet floor:",
+        ifelse(isTRUE(x$min_prop_pass), "YES", "NO"), "\n")
+    if (isFALSE(x$min_prop_pass)) {
+      cat("  -> Some classes are below the floor. Use",
+          "lctm_filter_small_classes()\n")
+      cat("     to remove those subjects and refit, or keep the model as-is.",
+          "This is your call, not automatic.\n")
+    }
+    cat("\n")
+  }
+
   # Overall
   cat("========================================\n")
   if (x$overall_pass) {

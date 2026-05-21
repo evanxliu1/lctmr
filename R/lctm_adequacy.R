@@ -9,6 +9,8 @@
 #'   \item{appa}{Minimum APPA value (default 0.70)}
 #'   \item{occ}{Minimum OCC value (default 5.0)}
 #'   \item{entropy}{Minimum relative entropy (default 0.5)}
+#'   \item{min_prop}{Minimum class proportion (default 0.05). Reported only;
+#'     see Details. Does NOT affect `overall_pass`.}
 #' }
 #'
 #' @return An `lctm_adequacy` object containing:
@@ -19,9 +21,13 @@
 #'   \item{occ_pass}{Logical; TRUE if all OCC values meet threshold}
 #'   \item{entropy}{Relative entropy value}
 #'   \item{entropy_pass}{Logical; TRUE if entropy meets threshold}
-#'   \item{overall_pass}{Logical; TRUE if ALL criteria are met}
+#'   \item{overall_pass}{Logical; TRUE if APPA, OCC, and entropy criteria are
+#'     met. The `min_prop` floor is NOT included here (see Details).}
 #'   \item{thresholds}{List of threshold values used}
 #'   \item{is_degenerate}{Logical; TRUE if model has empty classes (degenerate)}
+#'   \item{class_proportions}{Named vector of class proportions}
+#'   \item{min_prop_pass}{Logical; TRUE if all classes meet the `min_prop`
+#'     floor. Reported for investigator review; does not affect `overall_pass`.}
 #' }
 #'
 #' @details
@@ -44,6 +50,14 @@
 #' - Using a different polynomial degree
 #' - Trying the other model type (A vs B)
 #'
+#' **Minimum class proportion (`min_prop`):** APPA, OCC, and entropy all reward
+#' confident assignment, which a model can achieve by isolating a few unusual
+#' subjects into their own tiny class. The `min_prop` floor (default 0.05)
+#' flags any class smaller than that share of subjects. It is reported via
+#' `class_proportions` and `min_prop_pass` but is deliberately NOT folded into
+#' `overall_pass`: removing subjects is an investigator decision, not an
+#' automatic one. Use [lctm_filter_small_classes()] to act on it.
+#'
 #' @examples
 #' \dontrun{
 #' data(sample_growth)
@@ -57,7 +71,8 @@
 #'
 #' @export
 lctm_adequacy <- function(model,
-                          thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5)) {
+                          thresholds = list(appa = 0.70, occ = 5.0,
+                                            entropy = 0.5, min_prop = 0.05)) {
 
   # Validate inputs
   if (!inherits(model, "lctm_model")) {
@@ -65,7 +80,7 @@ lctm_adequacy <- function(model,
   }
 
   # Set default thresholds if not provided
-  default_thresholds <- list(appa = 0.70, occ = 5.0, entropy = 0.5)
+  default_thresholds <- list(appa = 0.70, occ = 5.0, entropy = 0.5, min_prop = 0.05)
   thresholds <- modifyList(default_thresholds, thresholds)
 
   # Handle K=1 case (no class separation to evaluate)
@@ -79,7 +94,9 @@ lctm_adequacy <- function(model,
       entropy_pass = TRUE,
       overall_pass = TRUE,
       thresholds = thresholds,
-      is_degenerate = FALSE
+      is_degenerate = FALSE,
+      class_proportions = c(Class1 = 1.0),
+      min_prop_pass = TRUE
     )
     return(result)
   }
@@ -120,8 +137,19 @@ lctm_adequacy <- function(model,
   # Entropy check
   entropy_pass <- entropy_value >= thresholds$entropy
 
-  # Overall: must pass ALL criteria AND not be degenerate
+  # Overall: must pass APPA, OCC, entropy AND not be degenerate.
+  # NOTE: min_prop is intentionally excluded here (report-only).
   overall_pass <- !is_degenerate && appa_pass && occ_pass && entropy_pass
+
+  # Class proportions and the minimum-proportion floor check (report-only).
+  class_proportions <- model$class_proportions
+  if (is.null(class_proportions)) {
+    class_assignment <- apply(prob_matrix, 1, which.max)
+    counts <- table(factor(class_assignment, levels = seq_len(model$k)))
+    class_proportions <- as.numeric(prop.table(counts))
+    names(class_proportions) <- paste0("Class", seq_len(model$k))
+  }
+  min_prop_pass <- all(class_proportions >= thresholds$min_prop)
 
   # Create and return lctm_adequacy object
   result <- new_lctm_adequacy(
@@ -133,7 +161,9 @@ lctm_adequacy <- function(model,
     entropy_pass = entropy_pass,
     overall_pass = overall_pass,
     thresholds = thresholds,
-    is_degenerate = is_degenerate
+    is_degenerate = is_degenerate,
+    class_proportions = class_proportions,
+    min_prop_pass = min_prop_pass
   )
 
   validate_lctm_adequacy(result)

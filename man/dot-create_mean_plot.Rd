@@ -4,7 +4,7 @@
 \alias{.create_mean_plot}
 \title{Create Mean Trajectory Plot}
 \usage{
-.create_mean_plot(model, time_range, n_points, ci, colors)
+.create_mean_plot(model, time_range, n_points, ci, colors, class_labels = NULL)
 }
 \description{
 Create Mean Trajectory Plot

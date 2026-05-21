@@ -11,7 +11,8 @@
   id_var,
   time_range,
   colors,
-  alpha
+  alpha,
+  class_labels = NULL
 )
 }
 \description{

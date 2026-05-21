@@ -7,7 +7,7 @@
 lctm_plot_residuals(model, standardized = TRUE, by_class = TRUE)
 }
 \arguments{
-\item{model}{An \code{lctm_model} object from \code{\link[=lctm_fit]{lctm_fit()}}.}
+\item{model}{An \code{lctm_model} object (e.g., \code{result$best_model} from \code{\link[=lctm_refine]{lctm_refine()}}).}
 
 \item{standardized}{Logical; if TRUE (default), plots standardized residuals.}
 
@@ -21,8 +21,8 @@ Creates diagnostic residual plots for a fitted LCTM model.
 }
 \examples{
 \dontrun{
-model <- lctm_fit(setup, k = 3, model = "B")
-lctm_plot_residuals(model)
+result <- lctm_refine(init, k_range = 2:4)
+lctm_plot_residuals(result$best_model)
 }
 
 }

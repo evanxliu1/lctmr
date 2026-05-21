@@ -23,6 +23,9 @@
 #'   \item{appa}{Minimum APPA (default 0.70)}
 #'   \item{occ}{Minimum OCC (default 5.0)}
 #'   \item{entropy}{Minimum relative entropy (default 0.5)}
+#'   \item{min_prop}{Minimum class proportion (default 0.05). Reported only;
+#'     does not affect which model is selected. See [lctm_adequacy()] and
+#'     [lctm_filter_small_classes()].}
 #' }
 #' @param start_simple Logical; if TRUE, uses a simple base model (1 class, no
 #'   random effects) for starting values instead of the full base model. This
@@ -93,7 +96,8 @@ lctm_refine <- function(initial,
                         knots = NULL,
                         covariates = NULL,
                         models = c("A", "B"),
-                        adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5),
+                        adequacy_thresholds = list(appa = 0.70, occ = 5.0,
+                                                   entropy = 0.5, min_prop = 0.05),
                         start_simple = FALSE,
                         save_pdf = NULL,
                         verbose = TRUE) {

@@ -15,7 +15,7 @@ lctm_plot_trajectories(
 )
 }
 \arguments{
-\item{model}{An \code{lctm_model} object from \code{\link[=lctm_fit]{lctm_fit()}}.}
+\item{model}{An \code{lctm_model} object (e.g., \code{result$best_model} from \code{\link[=lctm_refine]{lctm_refine()}}).}
 
 \item{type}{Character; type of plot - "mean" for mean trajectories,
 "spaghetti" for individual trajectories, or "both" for both plots.}
@@ -54,17 +54,18 @@ useful for seeing within-class variation.}
 \examples{
 \dontrun{
 data(sample_growth)
-setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-model <- lctm_fit(setup, k = 3, model = "B")
+cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid")
+init <- lctm_initial(cleaned, k = 2, degree = 2)
+result <- lctm_refine(init, k_range = 2:4)
 
-# Mean trajectory plot
-lctm_plot_trajectories(model, type = "mean")
+# Mean trajectory plot (legend shows n and \% per class)
+lctm_plot_trajectories(result$best_model, type = "mean")
 
 # Spaghetti plot
-lctm_plot_trajectories(model, type = "spaghetti")
+lctm_plot_trajectories(result$best_model, type = "spaghetti")
 
 # Both plots
-plots <- lctm_plot_trajectories(model, type = "both")
+plots <- lctm_plot_trajectories(result$best_model, type = "both")
 plots$mean
 plots$spaghetti
 }

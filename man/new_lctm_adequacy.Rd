@@ -13,7 +13,9 @@ new_lctm_adequacy(
   entropy_pass,
   overall_pass,
   thresholds,
-  is_degenerate = FALSE
+  is_degenerate = FALSE,
+  class_proportions = NULL,
+  min_prop_pass = NA
 )
 }
 \arguments{

@@ -11,8 +11,8 @@ lctm_refine(
   degree = NULL,
   knots = NULL,
   covariates = NULL,
-  models = c("B", "A"),
-  adequacy_thresholds = list(appa = 0.7, occ = 5, entropy = 0.5),
+  models = c("A", "B"),
+  adequacy_thresholds = list(appa = 0.7, occ = 5, entropy = 0.5, min_prop = 0.05),
   start_simple = FALSE,
   save_pdf = NULL,
   verbose = TRUE
@@ -36,14 +36,18 @@ defaults to the full polynomial matching \code{degree} from the initial model.}
 formula. Covariates are added to \code{fixed} only, not \code{mixture} (covariates
 adjust overall mean, not class-specific trajectory shape).}
 
-\item{models}{Character vector of model types to compare (default \code{c("B", "A")}).
-Model B = proportional variance (nwg=TRUE), Model A = common variance (nwg=FALSE).}
+\item{models}{Character vector of model types to compare (default \code{c("A", "B")}).
+Model A = common variance across groups (nwg=FALSE), Model B = proportional
+variance (nwg=TRUE). The search tries Model A first, then Model B.}
 
 \item{adequacy_thresholds}{List of adequacy thresholds:
 \describe{
 \item{appa}{Minimum APPA (default 0.70)}
 \item{occ}{Minimum OCC (default 5.0)}
 \item{entropy}{Minimum relative entropy (default 0.5)}
+\item{min_prop}{Minimum class proportion (default 0.05). Reported only;
+does not affect which model is selected. See \code{\link[=lctm_adequacy]{lctm_adequacy()}} and
+\code{\link[=lctm_filter_small_classes]{lctm_filter_small_classes()}}.}
 }}
 
 \item{start_simple}{Logical; if TRUE, uses a simple base model (1 class, no
@@ -86,7 +90,8 @@ The search proceeds as follows:
 \enumerate{
 \item Fit a base model (ng=1) with the refined formulas for starting values
 \item Compare BIC across K values in \code{k_range}
-\item For each K (in BIC order), try Model B then A
+\item For each K (in BIC order), try the model types in \code{models} order
+(default: Model A first, then Model B)
 \item Stop at the first model that passes all adequacy criteria
 }
 }

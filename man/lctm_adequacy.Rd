@@ -4,16 +4,21 @@
 \alias{lctm_adequacy}
 \title{Check Model Adequacy (Step 4)}
 \usage{
-lctm_adequacy(model, thresholds = list(appa = 0.7, occ = 5, entropy = 0.5))
+lctm_adequacy(
+  model,
+  thresholds = list(appa = 0.7, occ = 5, entropy = 0.5, min_prop = 0.05)
+)
 }
 \arguments{
-\item{model}{An \code{lctm_model} object from \code{\link[=lctm_fit]{lctm_fit()}}.}
+\item{model}{An \code{lctm_model} object (e.g., \code{result$best_model} from \code{\link[=lctm_refine]{lctm_refine()}}).}
 
 \item{thresholds}{A named list of threshold values:
 \describe{
 \item{appa}{Minimum APPA value (default 0.70)}
 \item{occ}{Minimum OCC value (default 5.0)}
 \item{entropy}{Minimum relative entropy (default 0.5)}
+\item{min_prop}{Minimum class proportion (default 0.05). Reported only;
+see Details. Does NOT affect \code{overall_pass}.}
 }}
 }
 \value{
@@ -25,9 +30,13 @@ An \code{lctm_adequacy} object containing:
 \item{occ_pass}{Logical; TRUE if all OCC values meet threshold}
 \item{entropy}{Relative entropy value}
 \item{entropy_pass}{Logical; TRUE if entropy meets threshold}
-\item{overall_pass}{Logical; TRUE if ALL criteria are met}
+\item{overall_pass}{Logical; TRUE if APPA, OCC, and entropy criteria are
+met. The \code{min_prop} floor is NOT included here (see Details).}
 \item{thresholds}{List of threshold values used}
 \item{is_degenerate}{Logical; TRUE if model has empty classes (degenerate)}
+\item{class_proportions}{Named vector of class proportions}
+\item{min_prop_pass}{Logical; TRUE if all classes meet the \code{min_prop}
+floor. Reported for investigator review; does not affect \code{overall_pass}.}
 }
 }
 \description{
@@ -50,26 +59,29 @@ indicating clear separation between classes.}
 
 If adequacy fails, consider:
 \itemize{
-\item Trying a different number of classes (K)
-\item Using splines (\code{use_splines = TRUE} in \code{\link[=lctm_fit]{lctm_fit()}})
-\item Using linear instead of quadratic model
+\item Trying a different number of classes (\code{k_range} in \code{\link[=lctm_refine]{lctm_refine()}})
+\item Using splines (\code{knots} argument in \code{\link[=lctm_initial]{lctm_initial()}}/\code{\link[=lctm_refine]{lctm_refine()}})
+\item Using a different polynomial degree
 \item Trying the other model type (A vs B)
 }
+
+\strong{Minimum class proportion (\code{min_prop}):} APPA, OCC, and entropy all reward
+confident assignment, which a model can achieve by isolating a few unusual
+subjects into their own tiny class. The \code{min_prop} floor (default 0.05)
+flags any class smaller than that share of subjects. It is reported via
+\code{class_proportions} and \code{min_prop_pass} but is deliberately NOT folded into
+\code{overall_pass}: removing subjects is an investigator decision, not an
+automatic one. Use \code{\link[=lctm_filter_small_classes]{lctm_filter_small_classes()}} to act on it.
 }
 \examples{
 \dontrun{
 data(sample_growth)
-setup <- lctm_setup(sample_growth, "weight_raw", "anthroage", "childid")
-model <- lctm_fit(setup, k = 3, model = "B")
+cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid")
+init <- lctm_initial(cleaned, k = 2, degree = 2)
+result <- lctm_refine(init, k_range = 2:4)
 
-adequacy <- lctm_adequacy(model)
+adequacy <- lctm_adequacy(result$best_model)
 print(adequacy)
-
-if (!adequacy$overall_pass) {
-  # Try with splines
-  model_splines <- lctm_fit(setup, k = 3, model = "B", use_splines = TRUE)
-  adequacy_splines <- lctm_adequacy(model_splines)
-}
 }
 
 }
