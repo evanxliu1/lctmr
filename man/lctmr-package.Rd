@@ -11,8 +11,8 @@ Performs Latent Class Trajectory Modeling (LCTM) to identify hidden subgroups of
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/evanliu/lctmr}
-  \item Report bugs at \url{https://github.com/evanliu/lctmr/issues}
+  \item \url{https://github.com/evanxliu1/lctmr}
+  \item Report bugs at \url{https://github.com/evanxliu1/lctmr/issues}
 }
 
 }
