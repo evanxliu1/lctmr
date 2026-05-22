@@ -85,9 +85,36 @@ The diagnostic panel from `lctm_initial()` is the heart of the investigator-driv
 
 A common convention is to match the random-effects polynomial to the mean-trajectory `degree` term-for-term, so each subject gets their own coefficients on top of the class mean.
 
+### How the trajectory is specified: `degree`, `knots`, `spline_degree`, and `random`
+
+These four arguments are easy to confuse because they sound related, but they act on **different layers of the model**. For a subject *i* in latent class *k*:
+
+```
+outcome_ij  =  [ class-k MEAN trajectory ]  +  [ subject i's RANDOM deviation ]  +  error
+```
+
+| Argument | Layer | What it controls |
+|---|---|---|
+| `degree` | class mean (fixed) | Polynomial degree of the mean trajectory **when not using splines**: 1 = linear, 2 = quadratic, 3 = cubic. When `knots` are supplied it is **inert** — the spline defines the mean — and is automatically set to 1. |
+| `knots` | class mean (fixed) | Switches the mean trajectory from a global polynomial to a **piecewise spline** with bends at the given time values (e.g. `c(6, 12)`). Supplying it forces `degree = 1`. |
+| `spline_degree` | class mean (fixed) | Order of the spline *pieces* when `knots` are set: `3` = natural cubic spline (`splines::ns()`, C² smooth), `2` = quadratic B-spline (`splines::bs(degree = 2)`, C¹, fewer parameters per knot). Ignored without `knots`. |
+| `random` | per-subject (random) | How each individual **deviates from their class mean over time**. Contains the time variable and its powers only, e.g. `~ 1 + age + I(age^2)`. Independent of the mean's form — see below. |
+
+Two consequences that trip people up:
+
+- **`degree` and `random` are different things.** `degree = 1, random = ~ 1 + age + I(age^2)` is *not* contradictory: `degree` describes the class *mean* (and is inert once you use knots), while the `random` formula describes per-subject *deviations*. A quadratic random structure on top of a spline mean is perfectly valid.
+- **The random part doesn't have to match the fixed part.** Even with a spline mean trajectory, you typically keep `random` as a low-order polynomial (`~ 1 + age + I(age^2)`). Putting the full spline basis in `random` means estimating a covariance over every basis coefficient *per subject*, which is heavy and usually won't converge. A quadratic random effect is the stable, conventional way to let individuals curve around the class mean.
+
+> ⚠️ **WARNING — these two arguments fail quietly if misused:**
+>
+> - **`spline_degree` does nothing without `knots`.** Setting `spline_degree` (to either `2` or `3`) but forgetting `knots` does **not** give you a spline — you get a plain polynomial of whatever `degree` is. The package emits a warning whenever you pass `spline_degree` without `knots`, but the model still fits, so read your warnings. **Always pass `knots` when you want a spline.**
+> - **`degree` is overridden to 1 whenever `knots` are present.** If you supply `knots`, any `degree` you set (or that is inherited from the initial model) is silently replaced by 1, with a message — the spline defines the shape. If you actually wanted a polynomial, *remove* `knots`.
+
+Baseline covariates (e.g. socioeconomic status, prematurity) are a *fifth*, separate thing — they go in neither `degree` nor `random` but in the `covariates` argument of `lctm_refine()`, which adds them to the fixed formula only (shifting the overall mean, the same across classes; not the class-specific shape).
+
 ### Splines
 
-`lctm_initial()` and `lctm_refine()` accept a `knots` argument for splines, useful when residual diagnostics show non-polynomial patterns (e.g., distinct early vs. late growth phases). `knots` is mutually exclusive with a polynomial `degree`:
+`lctm_initial()` and `lctm_refine()` accept a `knots` argument for splines, useful when residual diagnostics show non-polynomial patterns (e.g., distinct early vs. late growth phases). Supplying `knots` replaces the polynomial trajectory: `degree` is automatically set to 1 (with a message) because the spline carries the trajectory shape.
 
 ```r
 init   <- lctm_initial(cleaned, k = 3, knots = c(6, 12))
@@ -133,7 +160,7 @@ result <- lctm_refine(init, knots = c(6, 12), spline_degree = 2, k_range = 2:5)
 - `check_decrease` — for `"height"`/`"hc"`, flags implausible decreases > 3 cm between visits.
 - Returns an `lctm_cleaned` object (cleaned `data` plus the column names and counts of rows/subjects removed).
 
-**`lctm_initial(data, outcome = NULL, time_var = NULL, id_var = NULL, k = 2, degree = 2, knots = NULL, spline_degree = 3, sex_var = NULL, save_pdf = NULL, verbose = TRUE)`**
+**`lctm_initial(data, outcome = NULL, time_var = NULL, id_var = NULL, k = 2, degree = 2, knots = NULL, spline_degree = NULL, sex_var = NULL, save_pdf = NULL, verbose = TRUE)`**
 
 - Accepts an `lctm_cleaned` object *or* a raw data frame (in which case `outcome`/`time_var`/`id_var` are required).
 - `degree` — 1 = linear, 2 = quadratic, 3 = cubic; mutually exclusive with `knots`.

@@ -124,11 +124,25 @@ test_that("lctm_initial validates inputs", {
     "k must be"
   )
 
-  # knots with degree > 1
+  # knots with degree > 1 is no longer an error: degree is coerced to 1
+  init_k <- lctm_initial(sample_growth, "weight_raw", "anthroage", "childid",
+                         degree = 2, knots = c(3, 6), spline_degree = 2,
+                         verbose = FALSE)
+  expect_equal(init_k$degree, 1L)
+  expect_equal(init_k$spline_degree, 2L)
+
+  # spline_degree without knots is ignored, with a warning
+  expect_warning(
+    lctm_initial(sample_growth, "weight_raw", "anthroage", "childid",
+                  degree = 2, spline_degree = 2, verbose = FALSE),
+    "ignored because no"
+  )
+
+  # invalid spline_degree errors
   expect_error(
     lctm_initial(sample_growth, "weight_raw", "anthroage", "childid",
-                  degree = 2, knots = c(3, 6)),
-    "knots cannot be combined"
+                  degree = 1, knots = c(3, 6), spline_degree = 5),
+    "spline_degree must be"
   )
 })
 

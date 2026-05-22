@@ -12,7 +12,7 @@ lctm_initial(
   k = 2,
   degree = 2,
   knots = NULL,
-  spline_degree = 3,
+  spline_degree = NULL,
   sex_var = NULL,
   save_pdf = NULL,
   verbose = TRUE
@@ -35,13 +35,16 @@ lctm_initial(
 \item{knots}{Numeric vector of knot positions for splines. If provided,
 spline terms are added to the fixed and mixture formulas. The knots are
 placed at the specified ages/time values (e.g., \code{knots = c(6, 12, 24)} for
-knots at 6, 12, and 24 months). Cannot be combined with \code{degree > 1}.}
+knots at 6, 12, and 24 months). When \code{knots} are supplied the spline defines
+the trajectory shape, so \code{degree} is automatically set to 1 (with a message).}
 
 \item{spline_degree}{Polynomial degree of the spline pieces when \code{knots} is
-supplied: \code{3} (default) builds a natural cubic spline via \code{splines::ns()}
-(piecewise cubic, C2 continuity); \code{2} builds a quadratic B-spline via
-\code{splines::bs(degree = 2)} (piecewise quadratic, C1 continuity, fewer
-parameters per class). Ignored when \code{knots} is NULL.}
+supplied: \code{2} builds a quadratic B-spline via \code{splines::bs(degree = 2)}
+(piecewise quadratic, C1 continuity, fewer parameters per class); \code{3} builds
+a natural cubic spline via \code{splines::ns()} (piecewise cubic, C2 continuity).
+If NULL (default), a natural cubic spline is used. Supplying it without
+\code{knots} is ignored (with a warning), since spline order only matters for a
+spline.}
 
 \item{sex_var}{Character string naming the sex variable (optional). Used for
 faceting spaghetti and loess plots.}

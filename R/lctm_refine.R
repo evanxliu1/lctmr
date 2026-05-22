@@ -11,11 +11,12 @@
 #' @param degree Polynomial degree for the trajectory: 1 = linear, 2 = quadratic,
 #'   3 = cubic. If NULL (default), inherits from the initial model.
 #' @param knots Numeric vector of knot positions for splines. If NULL
-#'   (default), inherits from the initial model. Overrides `degree` when specified.
+#'   (default), inherits from the initial model. When supplied, the spline
+#'   defines the trajectory shape and `degree` is automatically set to 1.
 #' @param spline_degree Polynomial degree of the spline pieces when `knots` is
 #'   supplied: `3` = natural cubic spline (`splines::ns()`), `2` = quadratic
 #'   B-spline (`splines::bs(degree = 2)`). If NULL (default), inherits from the
-#'   initial model. Ignored when `knots` is NULL.
+#'   initial model. Ignored (with a warning) when `knots` is NULL.
 #' @param covariates Character vector of covariate names to add to the fixed
 #'   formula. Covariates are added to `fixed` only, not `mixture` (covariates
 #'   adjust overall mean, not class-specific trajectory shape).
@@ -122,6 +123,10 @@ lctm_refine <- function(initial,
   time_var <- initial$time_var
   id_var <- initial$id_var
 
+  # Track whether the user explicitly passed spline_degree to *this* call (vs.
+  # inheriting it), so we can warn only on a deliberate-but-ignored value.
+  user_set_spline_degree <- !is.null(spline_degree)
+
   # Inherit degree, knots, and spline_degree from initial if not specified
   if (is.null(degree)) degree <- initial$degree
   if (is.null(knots)) knots <- initial$knots
@@ -133,13 +138,29 @@ lctm_refine <- function(initial,
     stop("degree must be 1 (linear), 2 (quadratic), or 3 (cubic)", call. = FALSE)
   }
 
-  if (!is.null(knots) && degree > 1) {
-    stop("knots cannot be combined with degree > 1. Use degree = 1 with knots, or a polynomial degree without knots.",
-         call. = FALSE)
+  # When knots are supplied, the spline basis defines the mean-trajectory shape,
+  # so the polynomial `degree` must be 1. Rather than error on a leftover degree
+  # (e.g. one inherited from a quadratic/cubic initial fit), coerce it.
+  if (!is.null(knots) && degree != 1) {
+    if (verbose) {
+      message("knots supplied; setting degree = 1 ",
+              "(the spline basis defines the trajectory shape).")
+    }
+    degree <- 1
   }
 
   if (!spline_degree %in% c(2, 3)) {
     stop("spline_degree must be 2 (quadratic) or 3 (cubic)", call. = FALSE)
+  }
+
+  # spline_degree only does anything when knots are supplied. Warn loudly when
+  # the user explicitly passed one to this call but gave no knots, rather than
+  # silently fitting a plain polynomial when they asked for a spline.
+  if (is.null(knots) && user_set_spline_degree) {
+    warning("spline_degree = ", spline_degree, " is ignored because no `knots` ",
+            "were supplied. The trajectory is a degree-", degree,
+            " polynomial, NOT a spline. Pass `knots` to get a spline.",
+            call. = FALSE)
   }
 
   # Set default thresholds

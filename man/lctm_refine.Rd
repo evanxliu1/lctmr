@@ -31,12 +31,13 @@ defaults to the full polynomial matching \code{degree} from the initial model.}
 3 = cubic. If NULL (default), inherits from the initial model.}
 
 \item{knots}{Numeric vector of knot positions for splines. If NULL
-(default), inherits from the initial model. Overrides \code{degree} when specified.}
+(default), inherits from the initial model. When supplied, the spline
+defines the trajectory shape and \code{degree} is automatically set to 1.}
 
 \item{spline_degree}{Polynomial degree of the spline pieces when \code{knots} is
 supplied: \code{3} = natural cubic spline (\code{splines::ns()}), \code{2} = quadratic
 B-spline (\code{splines::bs(degree = 2)}). If NULL (default), inherits from the
-initial model. Ignored when \code{knots} is NULL.}
+initial model. Ignored (with a warning) when \code{knots} is NULL.}
 
 \item{covariates}{Character vector of covariate names to add to the fixed
 formula. Covariates are added to \code{fixed} only, not \code{mixture} (covariates

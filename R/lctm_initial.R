@@ -14,12 +14,15 @@
 #' @param knots Numeric vector of knot positions for splines. If provided,
 #'   spline terms are added to the fixed and mixture formulas. The knots are
 #'   placed at the specified ages/time values (e.g., `knots = c(6, 12, 24)` for
-#'   knots at 6, 12, and 24 months). Cannot be combined with `degree > 1`.
+#'   knots at 6, 12, and 24 months). When `knots` are supplied the spline defines
+#'   the trajectory shape, so `degree` is automatically set to 1 (with a message).
 #' @param spline_degree Polynomial degree of the spline pieces when `knots` is
-#'   supplied: `3` (default) builds a natural cubic spline via `splines::ns()`
-#'   (piecewise cubic, C2 continuity); `2` builds a quadratic B-spline via
-#'   `splines::bs(degree = 2)` (piecewise quadratic, C1 continuity, fewer
-#'   parameters per class). Ignored when `knots` is NULL.
+#'   supplied: `2` builds a quadratic B-spline via `splines::bs(degree = 2)`
+#'   (piecewise quadratic, C1 continuity, fewer parameters per class); `3` builds
+#'   a natural cubic spline via `splines::ns()` (piecewise cubic, C2 continuity).
+#'   If NULL (default), a natural cubic spline is used. Supplying it without
+#'   `knots` is ignored (with a warning), since spline order only matters for a
+#'   spline.
 #' @param sex_var Character string naming the sex variable (optional). Used for
 #'   faceting spaghetti and loess plots.
 #' @param save_pdf Character string; file path to save plots as multi-page PDF.
@@ -78,7 +81,7 @@
 #'
 #' @export
 lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
-                         k = 2, degree = 2, knots = NULL, spline_degree = 3,
+                         k = 2, degree = 2, knots = NULL, spline_degree = NULL,
                          sex_var = NULL, save_pdf = NULL, verbose = TRUE) {
 
   # Handle lctm_cleaned input
@@ -100,14 +103,35 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
     stop("degree must be 1 (linear), 2 (quadratic), or 3 (cubic)", call. = FALSE)
   }
 
-  if (!is.null(knots) && degree > 1) {
-    stop("knots cannot be combined with degree > 1. Use degree = 1 with knots, or a polynomial degree without knots.",
-         call. = FALSE)
+  # When knots are supplied, the spline basis defines the mean-trajectory shape,
+  # so the polynomial `degree` must be 1. Rather than error on a leftover degree
+  # (e.g. the default 2, or a value inherited from a quadratic fit), coerce it.
+  if (!is.null(knots) && degree != 1) {
+    if (verbose) {
+      message("knots supplied; setting degree = 1 ",
+              "(the spline basis defines the trajectory shape).")
+    }
+    degree <- 1
   }
 
-  if (!spline_degree %in% c(2, 3)) {
+  # Validate an explicitly-supplied spline_degree. NULL means "use the default"
+  # (natural cubic) and lets us tell apart "user set it" from "user left it".
+  if (!is.null(spline_degree) && !spline_degree %in% c(2, 3)) {
     stop("spline_degree must be 2 (quadratic) or 3 (cubic)", call. = FALSE)
   }
+
+  # spline_degree only does anything when knots are supplied. Warn loudly rather
+  # than silently fitting a plain polynomial when the user asked for a spline.
+  # Because the default is NULL, this fires for ANY explicit value (2 or 3).
+  if (is.null(knots) && !is.null(spline_degree)) {
+    warning("spline_degree = ", spline_degree, " is ignored because no `knots` ",
+            "were supplied. The trajectory is a degree-", degree,
+            " polynomial, NOT a spline. Pass `knots` to get a spline.",
+            call. = FALSE)
+  }
+
+  # Default to a natural cubic spline when knots are used.
+  if (is.null(spline_degree)) spline_degree <- 3
 
   if (!is.numeric(k) || length(k) != 1 || k < 2) {
     stop("k must be an integer >= 2", call. = FALSE)
