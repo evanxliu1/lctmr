@@ -11,11 +11,15 @@
 #' @param id_var Character string naming the subject ID variable.
 #' @param k Integer; number of latent classes (default 2).
 #' @param degree Polynomial degree: 1 = linear, 2 = quadratic (default), 3 = cubic.
-#' @param knots Numeric vector of knot positions for natural splines. If provided,
-#'   spline terms are added to the fixed and mixture formulas using
-#'   `splines::ns()`. The knots are placed at the specified ages/time values
-#'   (e.g., `knots = c(6, 12, 24)` for knots at 6, 12, and 24 months).
-#'   Cannot be combined with `degree > 1`.
+#' @param knots Numeric vector of knot positions for splines. If provided,
+#'   spline terms are added to the fixed and mixture formulas. The knots are
+#'   placed at the specified ages/time values (e.g., `knots = c(6, 12, 24)` for
+#'   knots at 6, 12, and 24 months). Cannot be combined with `degree > 1`.
+#' @param spline_degree Polynomial degree of the spline pieces when `knots` is
+#'   supplied: `3` (default) builds a natural cubic spline via `splines::ns()`
+#'   (piecewise cubic, C2 continuity); `2` builds a quadratic B-spline via
+#'   `splines::bs(degree = 2)` (piecewise quadratic, C1 continuity, fewer
+#'   parameters per class). Ignored when `knots` is NULL.
 #' @param sex_var Character string naming the sex variable (optional). Used for
 #'   faceting spaghetti and loess plots.
 #' @param save_pdf Character string; file path to save plots as multi-page PDF.
@@ -33,6 +37,7 @@
 #'   \item{degree}{Polynomial degree}
 #'   \item{k}{Number of classes}
 #'   \item{knots}{Knot positions (or NULL)}
+#'   \item{spline_degree}{Spline piece degree used when knots are supplied}
 #'   \item{initial_model}{The fitted hlme object (random = ~1)}
 #'   \item{base_model}{The ng=1 base model for starting values}
 #'   \item{plots}{Named list of ggplot objects (spaghetti, loess, residuals, guide)}
@@ -63,14 +68,18 @@
 #' # With cubic model
 #' init_cubic <- lctm_initial(cleaned, k = 2, degree = 3)
 #'
-#' # With spline knots at specific ages
+#' # With natural cubic spline knots at specific ages
 #' init_spline <- lctm_initial(cleaned, k = 2, degree = 1, knots = c(6, 12, 24))
+#'
+#' # With a quadratic (piecewise) spline instead of cubic
+#' init_q <- lctm_initial(cleaned, k = 2, degree = 1, knots = c(6, 12, 24),
+#'                        spline_degree = 2)
 #' }
 #'
 #' @export
 lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
-                         k = 2, degree = 2, knots = NULL, sex_var = NULL,
-                         save_pdf = NULL, verbose = TRUE) {
+                         k = 2, degree = 2, knots = NULL, spline_degree = 3,
+                         sex_var = NULL, save_pdf = NULL, verbose = TRUE) {
 
   # Handle lctm_cleaned input
   if (inherits(data, "lctm_cleaned")) {
@@ -96,13 +105,18 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
          call. = FALSE)
   }
 
+  if (!spline_degree %in% c(2, 3)) {
+    stop("spline_degree must be 2 (quadratic) or 3 (cubic)", call. = FALSE)
+  }
+
   if (!is.numeric(k) || length(k) != 1 || k < 2) {
     stop("k must be an integer >= 2", call. = FALSE)
   }
   k <- as.integer(k)
 
   # Build formulas
-  formula_parts <- .build_trajectory_formulas(outcome, time_var, degree, knots)
+  formula_parts <- .build_trajectory_formulas(outcome, time_var, degree, knots,
+                                              spline_degree)
   fixed_formula <- formula_parts$fixed
   mixture_formula <- formula_parts$mixture
 
@@ -125,7 +139,13 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
   # Step 2: Fit initial K-class model with random intercept only
   if (verbose) {
     degree_label <- c("1" = "linear", "2" = "quadratic", "3" = "cubic")[as.character(degree)]
-    knot_label <- if (!is.null(knots)) paste0(" with knots at ", paste(knots, collapse = ", ")) else ""
+    if (!is.null(knots)) {
+      spline_label <- if (spline_degree == 2) "quadratic spline" else "natural cubic spline"
+      degree_label <- spline_label
+      knot_label <- paste0(" with knots at ", paste(knots, collapse = ", "))
+    } else {
+      knot_label <- ""
+    }
     message("Fitting initial ", degree_label, " model with K = ", k,
             " classes (random intercept only)", knot_label, "...")
   }
@@ -308,6 +328,7 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
     degree = as.integer(degree),
     k = k,
     knots = knots,
+    spline_degree = as.integer(spline_degree),
     initial_model = initial_model,
     base_model = base_model,
     plots = plots
@@ -316,12 +337,25 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
 
 #' Build trajectory formulas from degree and knots
 #' @keywords internal
-.build_trajectory_formulas <- function(outcome, time_var, degree, knots = NULL) {
+.build_trajectory_formulas <- function(outcome, time_var, degree, knots = NULL,
+                                        spline_degree = 3) {
   if (!is.null(knots)) {
-    # Spline-based formula with knots
+    # Spline-based formula with knots. spline_degree controls the polynomial
+    # order of the spline pieces:
+    #   3 = natural cubic spline (splines::ns), piecewise cubic, C^2 continuity
+    #   2 = quadratic B-spline (splines::bs, degree = 2), piecewise quadratic,
+    #       C^1 continuity; fewer parameters per class than cubic.
     knot_str <- paste(knots, collapse = ", ")
-    spline_term <- paste0("splines::ns(", time_var, ", knots = c(", knot_str, "))")
-    fixed_terms <- paste0("1 + ", time_var, " + ", spline_term)
+    if (spline_degree == 2) {
+      spline_term <- paste0("splines::bs(", time_var,
+                            ", degree = 2, knots = c(", knot_str, "))")
+      # The quadratic B-spline basis already spans the linear term, so we do
+      # not add a separate time_var term (it would be collinear).
+      fixed_terms <- paste0("1 + ", spline_term)
+    } else {
+      spline_term <- paste0("splines::ns(", time_var, ", knots = c(", knot_str, "))")
+      fixed_terms <- paste0("1 + ", time_var, " + ", spline_term)
+    }
     mixture_terms <- fixed_terms
   } else if (degree == 3) {
     fixed_terms <- paste0("1 + ", time_var, " + I(", time_var, "^2) + I(", time_var, "^3)")

@@ -13,6 +13,7 @@ new_lctm_initial(
   degree = 2L,
   k = 2L,
   knots = NULL,
+  spline_degree = 3L,
   initial_model = NULL,
   base_model = NULL,
   plots = list()
@@ -32,6 +33,10 @@ new_lctm_initial(
 \item{degree}{Polynomial degree}
 
 \item{k}{Number of classes in initial model}
+
+\item{knots}{Knot positions (or NULL)}
+
+\item{spline_degree}{Spline piece degree when knots are supplied (2 or 3)}
 
 \item{initial_model}{The hlme object (fitted with random = ~1)}
 

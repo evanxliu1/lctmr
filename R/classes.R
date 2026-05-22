@@ -322,6 +322,8 @@ new_lctm_cleaned <- function(data, outcome, time_var, id_var,
 #' @param sex_var Name of sex variable (optional)
 #' @param degree Polynomial degree
 #' @param k Number of classes in initial model
+#' @param knots Knot positions (or NULL)
+#' @param spline_degree Spline piece degree when knots are supplied (2 or 3)
 #' @param initial_model The hlme object (fitted with random = ~1)
 #' @param base_model The ng=1 model for starting values
 #' @param plots Named list of ggplot objects
@@ -330,7 +332,7 @@ new_lctm_cleaned <- function(data, outcome, time_var, id_var,
 #' @keywords internal
 new_lctm_initial <- function(data, outcome, time_var, id_var,
                              sex_var = NULL, degree = 2L, k = 2L,
-                             knots = NULL,
+                             knots = NULL, spline_degree = 3L,
                              initial_model = NULL, base_model = NULL,
                              plots = list()) {
   structure(
@@ -343,6 +345,7 @@ new_lctm_initial <- function(data, outcome, time_var, id_var,
       degree = degree,
       k = k,
       knots = knots,
+      spline_degree = spline_degree,
       initial_model = initial_model,
       base_model = base_model,
       plots = plots

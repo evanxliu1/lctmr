@@ -4,7 +4,13 @@
 \alias{.build_trajectory_formulas}
 \title{Build trajectory formulas from degree and knots}
 \usage{
-.build_trajectory_formulas(outcome, time_var, degree, knots = NULL)
+.build_trajectory_formulas(
+  outcome,
+  time_var,
+  degree,
+  knots = NULL,
+  spline_degree = 3
+)
 }
 \description{
 Build trajectory formulas from degree and knots

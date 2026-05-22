@@ -243,7 +243,10 @@ print.lctm_initial <- function(x, ...) {
   degree_label <- c("1" = "linear", "2" = "quadratic", "3" = "cubic")[as.character(x$degree)]
   cat("Degree:", x$degree, paste0("(", degree_label, ")"), "\n")
   if (!is.null(x$knots)) {
-    cat("Knots:", paste(x$knots, collapse = ", "), "\n")
+    sd <- if (is.null(x$spline_degree)) 3L else x$spline_degree
+    spline_label <- if (sd == 2) "quadratic B-spline" else "natural cubic spline"
+    cat("Knots:", paste(x$knots, collapse = ", "),
+        paste0("(", spline_label, ")"), "\n")
   }
   cat("Number of classes (K):", x$k, "\n")
   cat("Random effects: intercept only (~1)\n")

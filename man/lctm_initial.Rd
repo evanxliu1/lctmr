@@ -12,6 +12,7 @@ lctm_initial(
   k = 2,
   degree = 2,
   knots = NULL,
+  spline_degree = 3,
   sex_var = NULL,
   save_pdf = NULL,
   verbose = TRUE
@@ -31,11 +32,16 @@ lctm_initial(
 
 \item{degree}{Polynomial degree: 1 = linear, 2 = quadratic (default), 3 = cubic.}
 
-\item{knots}{Numeric vector of knot positions for natural splines. If provided,
-spline terms are added to the fixed and mixture formulas using
-\code{splines::ns()}. The knots are placed at the specified ages/time values
-(e.g., \code{knots = c(6, 12, 24)} for knots at 6, 12, and 24 months).
-Cannot be combined with \code{degree > 1}.}
+\item{knots}{Numeric vector of knot positions for splines. If provided,
+spline terms are added to the fixed and mixture formulas. The knots are
+placed at the specified ages/time values (e.g., \code{knots = c(6, 12, 24)} for
+knots at 6, 12, and 24 months). Cannot be combined with \code{degree > 1}.}
+
+\item{spline_degree}{Polynomial degree of the spline pieces when \code{knots} is
+supplied: \code{3} (default) builds a natural cubic spline via \code{splines::ns()}
+(piecewise cubic, C2 continuity); \code{2} builds a quadratic B-spline via
+\code{splines::bs(degree = 2)} (piecewise quadratic, C1 continuity, fewer
+parameters per class). Ignored when \code{knots} is NULL.}
 
 \item{sex_var}{Character string naming the sex variable (optional). Used for
 faceting spaghetti and loess plots.}
@@ -57,6 +63,7 @@ An \code{lctm_initial} object containing:
 \item{degree}{Polynomial degree}
 \item{k}{Number of classes}
 \item{knots}{Knot positions (or NULL)}
+\item{spline_degree}{Spline piece degree used when knots are supplied}
 \item{initial_model}{The fitted hlme object (random = ~1)}
 \item{base_model}{The ng=1 base model for starting values}
 \item{plots}{Named list of ggplot objects (spaghetti, loess, residuals, guide)}
@@ -92,8 +99,12 @@ plot(init)
 # With cubic model
 init_cubic <- lctm_initial(cleaned, k = 2, degree = 3)
 
-# With spline knots at specific ages
+# With natural cubic spline knots at specific ages
 init_spline <- lctm_initial(cleaned, k = 2, degree = 1, knots = c(6, 12, 24))
+
+# With a quadratic (piecewise) spline instead of cubic
+init_q <- lctm_initial(cleaned, k = 2, degree = 1, knots = c(6, 12, 24),
+                       spline_degree = 2)
 }
 
 }

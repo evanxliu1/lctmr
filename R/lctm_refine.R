@@ -10,8 +10,12 @@
 #' @param k_range Integer vector of K values to search (default 2:7).
 #' @param degree Polynomial degree for the trajectory: 1 = linear, 2 = quadratic,
 #'   3 = cubic. If NULL (default), inherits from the initial model.
-#' @param knots Numeric vector of knot positions for natural splines. If NULL
+#' @param knots Numeric vector of knot positions for splines. If NULL
 #'   (default), inherits from the initial model. Overrides `degree` when specified.
+#' @param spline_degree Polynomial degree of the spline pieces when `knots` is
+#'   supplied: `3` = natural cubic spline (`splines::ns()`), `2` = quadratic
+#'   B-spline (`splines::bs(degree = 2)`). If NULL (default), inherits from the
+#'   initial model. Ignored when `knots` is NULL.
 #' @param covariates Character vector of covariate names to add to the fixed
 #'   formula. Covariates are added to `fixed` only, not `mixture` (covariates
 #'   adjust overall mean, not class-specific trajectory shape).
@@ -83,8 +87,12 @@
 #'                        random = ~ 1 + anthroage,
 #'                        start_simple = TRUE, k_range = 2:4)
 #'
-#' # With spline knots
+#' # With natural cubic spline knots
 #' result <- lctm_refine(init, knots = c(6, 12, 24),
+#'                        random = ~ 1 + anthroage, k_range = 2:4)
+#'
+#' # With a quadratic (piecewise) spline instead of cubic
+#' result <- lctm_refine(init, knots = c(6, 12, 24), spline_degree = 2,
 #'                        random = ~ 1 + anthroage, k_range = 2:4)
 #' }
 #'
@@ -94,6 +102,7 @@ lctm_refine <- function(initial,
                         k_range = 2:7,
                         degree = NULL,
                         knots = NULL,
+                        spline_degree = NULL,
                         covariates = NULL,
                         models = c("A", "B"),
                         adequacy_thresholds = list(appa = 0.70, occ = 5.0,
@@ -113,9 +122,12 @@ lctm_refine <- function(initial,
   time_var <- initial$time_var
   id_var <- initial$id_var
 
-  # Inherit degree and knots from initial if not specified
+  # Inherit degree, knots, and spline_degree from initial if not specified
   if (is.null(degree)) degree <- initial$degree
   if (is.null(knots)) knots <- initial$knots
+  if (is.null(spline_degree)) {
+    spline_degree <- if (is.null(initial$spline_degree)) 3 else initial$spline_degree
+  }
 
   if (!degree %in% c(1, 2, 3)) {
     stop("degree must be 1 (linear), 2 (quadratic), or 3 (cubic)", call. = FALSE)
@@ -124,6 +136,10 @@ lctm_refine <- function(initial,
   if (!is.null(knots) && degree > 1) {
     stop("knots cannot be combined with degree > 1. Use degree = 1 with knots, or a polynomial degree without knots.",
          call. = FALSE)
+  }
+
+  if (!spline_degree %in% c(2, 3)) {
+    stop("spline_degree must be 2 (quadratic) or 3 (cubic)", call. = FALSE)
   }
 
   # Set default thresholds
@@ -152,7 +168,8 @@ lctm_refine <- function(initial,
   }
 
   # Build trajectory formulas using shared helper
-  formula_parts <- .build_trajectory_formulas(outcome, time_var, degree, knots)
+  formula_parts <- .build_trajectory_formulas(outcome, time_var, degree, knots,
+                                              spline_degree)
   trajectory_terms <- formula_parts$terms
 
   # Add covariates to fixed formula only

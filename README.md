@@ -87,12 +87,25 @@ A common convention is to match the random-effects polynomial to the mean-trajec
 
 ### Splines
 
-`lctm_initial()` and `lctm_refine()` accept a `knots` argument for natural splines (via `splines::ns()`), useful when residual diagnostics show non-polynomial patterns (e.g., distinct early vs. late growth phases). `knots` is mutually exclusive with a polynomial `degree`:
+`lctm_initial()` and `lctm_refine()` accept a `knots` argument for splines, useful when residual diagnostics show non-polynomial patterns (e.g., distinct early vs. late growth phases). `knots` is mutually exclusive with a polynomial `degree`:
 
 ```r
 init   <- lctm_initial(cleaned, k = 3, knots = c(6, 12))
 result <- lctm_refine(init, knots = c(6, 12), k_range = 2:5)
 ```
+
+The `spline_degree` argument controls the polynomial order of the spline pieces:
+
+- `spline_degree = 3` (default) — **natural cubic spline** via `splines::ns()`. Piecewise cubic with continuous curvature (C²) and linear tails beyond the boundary knots. The conventional choice.
+- `spline_degree = 2` — **quadratic B-spline** via `splines::bs(degree = 2)`. Piecewise quadratic with continuous slope but discontinuous curvature (C¹). It uses one fewer parameter per knot than cubic, so it is more parsimonious and tends to estimate more stably in a multi-class mixture — useful when a cubic spline is over-flexible or fails to converge.
+
+```r
+# Quadratic (piecewise) spline instead of the default cubic
+init   <- lctm_initial(cleaned, k = 3, knots = c(6, 12), spline_degree = 2)
+result <- lctm_refine(init, knots = c(6, 12), spline_degree = 2, k_range = 2:5)
+```
+
+`spline_degree` is inherited by `lctm_refine()` from the initial model unless overridden, and is ignored when `knots` is NULL.
 
 ## Functions
 
@@ -101,7 +114,8 @@ result <- lctm_refine(init, knots = c(6, 12), k_range = 2:5)
 | Workflow | `lctm_clean()` | Validate input, drop NAs, apply WHO/CDC outlier cutoffs, enforce min observations per subject. Optional — raw data can go straight into `lctm_initial()`. |
 | Workflow | `lctm_initial()` | Fit a single-K model with random intercept only; produce spaghetti/LOESS/residual plots and a guide panel. |
 | Workflow | `lctm_refine()` | Automated refinement: BIC sweep across K, Model A/B comparison at each K, adequacy gating. |
-| Adequacy | `lctm_adequacy()` | Evaluate APPA, OCC, and relative entropy for any fitted model; used internally by `lctm_refine()` but exposed for standalone use. |
+| Adequacy | `lctm_adequacy()` | Evaluate APPA, OCC, relative entropy, and the minimum class proportion for any fitted model; used internally by `lctm_refine()` but exposed for standalone use. |
+| Adequacy | `lctm_filter_small_classes()` | Investigator-driven companion to the `min_prop` floor: remove subjects assigned to below-floor classes and return a new dataset (plus the removed IDs) to refit on. |
 | Visualization | `lctm_plot_trajectories()` | Mean and/or spaghetti trajectory plots (legend shows n and %). |
 | Visualization | `lctm_plot_residuals()` | Residual diagnostic plots, optionally faceted by class. |
 | Low-level | `calc_appa()` | Average Posterior Probability of Assignment, per class. |
@@ -119,17 +133,18 @@ result <- lctm_refine(init, knots = c(6, 12), k_range = 2:5)
 - `check_decrease` — for `"height"`/`"hc"`, flags implausible decreases > 3 cm between visits.
 - Returns an `lctm_cleaned` object (cleaned `data` plus the column names and counts of rows/subjects removed).
 
-**`lctm_initial(data, outcome = NULL, time_var = NULL, id_var = NULL, k = 2, degree = 2, knots = NULL, sex_var = NULL, save_pdf = NULL, verbose = TRUE)`**
+**`lctm_initial(data, outcome = NULL, time_var = NULL, id_var = NULL, k = 2, degree = 2, knots = NULL, spline_degree = 3, sex_var = NULL, save_pdf = NULL, verbose = TRUE)`**
 
 - Accepts an `lctm_cleaned` object *or* a raw data frame (in which case `outcome`/`time_var`/`id_var` are required).
 - `degree` — 1 = linear, 2 = quadratic, 3 = cubic; mutually exclusive with `knots`.
+- `knots` / `spline_degree` — knot positions and the spline piece degree (3 = natural cubic via `ns()`, 2 = quadratic via `bs()`); see [Splines](#splines).
 - `save_pdf` — path to write the diagnostic panel.
 - Returns an `lctm_initial` object holding the fitted random-intercept model, a base (single-class) model for start values, and a named list of `plots`.
 
-**`lctm_refine(initial, random = NULL, k_range = 2:7, degree = NULL, knots = NULL, covariates = NULL, models = c("A", "B"), adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5), start_simple = FALSE, save_pdf = NULL, verbose = TRUE)`**
+**`lctm_refine(initial, random = NULL, k_range = 2:7, degree = NULL, knots = NULL, spline_degree = NULL, covariates = NULL, models = c("A", "B"), adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5, min_prop = 0.05), start_simple = FALSE, save_pdf = NULL, verbose = TRUE)`**
 
 - `random` — random-effects formula chosen from the diagnostics; defaults to the full polynomial matching `degree`.
-- `degree`/`knots` — inherited from `initial` if `NULL`.
+- `degree`/`knots`/`spline_degree` — inherited from `initial` if `NULL`.
 - `covariates` — names added to the *fixed* part of the formula only.
 - `models` — which parameterizations to try and in what order (see below).
 - `start_simple` — use a single-class model for starting values, which speeds up large datasets.
@@ -174,8 +189,27 @@ The package defines `print` methods for `lctm_cleaned`, `lctm_initial`, `lctm_mo
 | APPA | ≥ 0.70 | Average Posterior Probability of Assignment — mean confidence of assignment within each class. |
 | OCC | ≥ 5.0 | Odds of Correct Classification — assignment certainty relative to class prevalence (`Inf` = perfect). |
 | Entropy | ≥ 0.5 | Relative (normalized) entropy — overall class separation, 0 to 1. |
+| Min. class proportion | ≥ 0.05 | Smallest class as a share of subjects. **Reported only** — see below. |
 
-A model **passes** when all three metrics meet their thresholds across all non-empty classes *and* the model is not degenerate (no empty classes). Thresholds are configurable via `lctm_refine(adequacy_thresholds = ...)` or `lctm_adequacy(thresholds = ...)`. The returned `lctm_adequacy` object reports per-class values, per-metric pass flags, an `overall_pass`, and an `is_degenerate` flag.
+A model **passes** (`overall_pass = TRUE`) when APPA, OCC, and entropy all meet their thresholds across non-empty classes *and* the model is not degenerate (no empty classes). Thresholds are configurable via `lctm_refine(adequacy_thresholds = ...)` or `lctm_adequacy(thresholds = ...)`. The returned `lctm_adequacy` object reports per-class values, per-metric pass flags, an `overall_pass`, an `is_degenerate` flag, the `class_proportions`, and a `min_prop_pass` flag.
+
+### Minimum class proportion and the filter/refit loop
+
+APPA, OCC, and entropy all reward *confident* assignment, which a model can achieve by isolating a handful of unusual subjects into their own tiny class. The `min_prop` floor (default 0.05) flags any class smaller than that share of subjects.
+
+It is reported via `class_proportions` and `min_prop_pass` but is **deliberately not folded into `overall_pass`**: removing subjects is an investigator decision, not an automatic one. To act on the flag, use `lctm_filter_small_classes()`, which never modifies the original data and never refits — it just hands back a filtered dataset and the full list of removed IDs (so exclusions can be reported in, e.g., a participant-flow diagram):
+
+```r
+result <- lctm_refine(initial, random = ~ 1 + anthroage, k_range = 2:5)
+print(result$adequacy)                      # see which classes fall below the floor
+
+filt   <- lctm_filter_small_classes(result, min_prop = 0.05)  # remove them, get new data
+init2  <- lctm_initial(filt$data, k = result$best_k, degree = 2)
+result2 <- lctm_refine(init2, random = ~ 1 + anthroage,
+                       k_range = result$best_k)                # refit (same K first is usual)
+```
+
+Repeat as many rounds as you judge appropriate, or stop.
 
 ## Bundled data
 
