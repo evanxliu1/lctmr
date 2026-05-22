@@ -101,6 +101,20 @@ result_sp  <- lctm_refine(initial_sp, knots = c(6, 12), k_range = 2:5)
 
 `lctm_refine()` carries the same `knots` through to all candidate models for a like-for-like comparison.
 
+The `spline_degree` argument sets the polynomial order of the spline pieces. The
+default `3` builds a natural cubic spline (`splines::ns()`); `2` builds a
+quadratic B-spline (`splines::bs(degree = 2)`), which uses one fewer parameter
+per knot and tends to estimate more stably in a multi-class mixture — useful
+when a cubic spline is over-flexible or fails to converge:
+
+```{r splines-quadratic, eval = FALSE}
+initial_q <- lctm_initial(cleaned, k = 3, knots = c(6, 12), spline_degree = 2)
+result_q  <- lctm_refine(initial_q, knots = c(6, 12), spline_degree = 2, k_range = 2:5)
+```
+
+Like `knots`, `spline_degree` is inherited by `lctm_refine()` from the initial
+model unless you override it.
+
 ## Understanding Model Types
 
 lctmr supports two model types, evaluated during refinement:

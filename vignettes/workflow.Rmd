@@ -110,7 +110,7 @@ The initial model also produces spaghetti and loess plots. The loess plot helps 
 
 ### Using Knots for Complex Trajectories
 
-If the loess plot reveals inflection points, you can use natural splines with knots:
+If the loess plot reveals inflection points, you can use splines with knots:
 
 ```{r step2-knots, eval = FALSE}
 # Place knots at identified inflection points
@@ -121,6 +121,25 @@ initial_knots <- lctm_initial(
   knots = c(3, 6, 9)     # Knot positions (e.g., ages in months)
 )
 ```
+
+`spline_degree` controls the polynomial order of the spline pieces: the default
+`3` is a natural cubic spline (`splines::ns()`), while `2` is a quadratic
+B-spline (`splines::bs(degree = 2)`). The quadratic form uses one fewer
+parameter per knot and is more stable in a multi-class mixture — a good fallback
+when a cubic spline is over-flexible or fails to converge:
+
+```{r step2-knots-quadratic, eval = FALSE}
+initial_knots_q <- lctm_initial(
+  cleaned,
+  k = 3,
+  degree = 1,
+  knots = c(3, 6, 9),
+  spline_degree = 2      # quadratic (piecewise) spline instead of cubic
+)
+```
+
+Both `knots` and `spline_degree` are inherited by `lctm_refine()` from the
+initial model unless overridden.
 
 ## Step 3: Automated Refinement
 
