@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Evan Liu \email{evanliu@ucdavis.edu}
+\strong{Maintainer}: Evan Liu \email{naoliu@ucdavis.edu}
 
 }
 \keyword{internal}
