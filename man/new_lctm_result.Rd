@@ -12,7 +12,8 @@ new_lctm_result(
   bic_table,
   all_models = NULL,
   class_assignments = NULL,
-  search_history = NULL
+  search_history = NULL,
+  filter_chain = NULL
 )
 }
 \arguments{

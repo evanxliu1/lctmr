@@ -155,3 +155,76 @@ test_that("lctm_refine BIC table has correct structure", {
   expect_true("bic" %in% names(result$bic_table))
   expect_true("converged" %in% names(result$bic_table))
 })
+
+# --- min_prop_action ---------------------------------------------------------
+
+test_that("lctm_refine validates min_prop_action and max_filter_iter", {
+  skip_on_cran()
+
+  data("sample_growth", package = "lctmr")
+  cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                         verbose = FALSE)
+  init <- lctm_initial(cleaned, k = 2, degree = 2, verbose = FALSE)
+
+  expect_error(
+    lctm_refine(init, random = ~ 1 + anthroage, k_range = 2,
+                min_prop_action = "not_a_policy", verbose = FALSE),
+    "'arg' should be one of"
+  )
+  expect_error(
+    lctm_refine(init, random = ~ 1 + anthroage, k_range = 2,
+                max_filter_iter = -1, verbose = FALSE),
+    "max_filter_iter"
+  )
+})
+
+test_that("search_history records min_prop_pass per attempt", {
+  skip_on_cran()
+
+  data("sample_growth", package = "lctmr")
+  cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                         verbose = FALSE)
+  init <- lctm_initial(cleaned, k = 2, degree = 2, verbose = FALSE)
+
+  result <- lctm_refine(init, random = ~ 1 + anthroage, k_range = 2:3,
+                         verbose = FALSE)
+  expect_true("min_prop_pass" %in% names(result$search_history))
+})
+
+test_that("min_prop_action='fail' tightens the selection criterion", {
+  skip_on_cran()
+
+  data("sample_growth", package = "lctmr")
+  cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                         verbose = FALSE)
+  init <- lctm_initial(cleaned, k = 2, degree = 2, verbose = FALSE)
+
+  # Impossible floor: no model can have a class >= 99% of subjects after a
+  # multi-class split. "fail" must therefore reject every model and yield
+  # best_model = NULL, even if APPA/OCC/entropy would have passed under "report".
+  result_fail <- lctm_refine(
+    init, random = ~ 1 + anthroage, k_range = 2:3,
+    adequacy_thresholds = list(appa = 0.0, occ = 0.0, entropy = 0.0,
+                               min_prop = 0.99),
+    min_prop_action = "fail", verbose = FALSE
+  )
+  expect_null(result_fail$best_model)
+})
+
+test_that("min_prop_action='filter_refit' returns NULL filter_chain when not triggered", {
+  skip_on_cran()
+
+  data("sample_growth", package = "lctmr")
+  cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                         verbose = FALSE)
+  init <- lctm_initial(cleaned, k = 2, degree = 2, verbose = FALSE)
+
+  # With min_prop = 0 every class clears the floor, so the filter loop never
+  # triggers and filter_chain stays NULL even with action = "filter_refit".
+  result <- lctm_refine(
+    init, random = ~ 1 + anthroage, k_range = 2,
+    adequacy_thresholds = list(min_prop = 0),
+    min_prop_action = "filter_refit", verbose = FALSE
+  )
+  expect_null(result$filter_chain)
+})

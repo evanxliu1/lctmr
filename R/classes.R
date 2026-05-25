@@ -243,7 +243,8 @@ new_lctm_result <- function(best_model,
                             bic_table,
                             all_models = NULL,
                             class_assignments = NULL,
-                            search_history = NULL) {
+                            search_history = NULL,
+                            filter_chain = NULL) {
   structure(
     list(
       best_model = best_model,
@@ -253,7 +254,11 @@ new_lctm_result <- function(best_model,
       bic_table = bic_table,
       all_models = all_models,
       class_assignments = class_assignments,
-      search_history = search_history
+      search_history = search_history,
+      # Chain of lctm_filter_small_classes() outputs produced when
+      # min_prop_action = "filter_refit" triggers one or more refit rounds.
+      # NULL when no filtering happened.
+      filter_chain = filter_chain
     ),
     class = "lctm_result"
   )

@@ -14,6 +14,8 @@ lctm_refine(
   covariates = NULL,
   models = c("A", "B"),
   adequacy_thresholds = list(appa = 0.7, occ = 5, entropy = 0.5, min_prop = 0.05),
+  min_prop_action = c("report", "fail", "filter_refit"),
+  max_filter_iter = 3L,
   start_simple = FALSE,
   save_pdf = NULL,
   verbose = TRUE
@@ -56,6 +58,29 @@ variance (nwg=TRUE). The search tries Model A first, then Model B.}
 does not affect which model is selected. See \code{\link[=lctm_adequacy]{lctm_adequacy()}} and
 \code{\link[=lctm_filter_small_classes]{lctm_filter_small_classes()}}.}
 }}
+
+\item{min_prop_action}{Policy for what to do about the \code{min_prop} floor:
+\describe{
+\item{\code{"report"}}{(default) Today's behavior: \code{min_prop_pass} is reported
+on the adequacy object but ignored by the BIC search. The search stops at
+the first model satisfying APPA/OCC/entropy, even if a class is below
+floor. Backward-compatible.}
+\item{\code{"fail"}}{Fold \code{min_prop_pass} into the search-loop pass criterion.
+The search keeps walking K and Model A/B until it finds a model whose
+smallest class is at or above \code{adequacy_thresholds$min_prop}. The
+\code{overall_pass} field on the returned adequacy object continues to reflect
+APPA/OCC/entropy only — this policy affects model \emph{selection}, not the
+reported adequacy fields.}
+\item{\code{"filter_refit"}}{After the search finds an adequacy-passing model,
+if a class is below floor, automatically call
+\code{\link[=lctm_filter_small_classes]{lctm_filter_small_classes()}} and re-run \code{lctm_refine()} on the filtered
+data (with the same trajectory spec and \code{random} formula). Repeats up to
+\code{max_filter_iter} times. The full chain of filter outputs (and removed
+subject IDs) is returned in \verb{$filter_chain} for audit/transparency.}
+}}
+
+\item{max_filter_iter}{Integer; maximum number of filter→refit rounds when
+\code{min_prop_action = "filter_refit"}. Default 3. Ignored under other policies.}
 
 \item{start_simple}{Logical; if TRUE, uses a simple base model (1 class, no
 random effects) for starting values instead of the full base model. This

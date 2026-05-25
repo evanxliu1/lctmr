@@ -168,14 +168,15 @@ result <- lctm_refine(init, knots = c(6, 12), spline_degree = 2, k_range = 2:5)
 - `save_pdf` — path to write the diagnostic panel.
 - Returns an `lctm_initial` object holding the fitted random-intercept model, a base (single-class) model for start values, and a named list of `plots`.
 
-**`lctm_refine(initial, random = NULL, k_range = 2:7, degree = NULL, knots = NULL, spline_degree = NULL, covariates = NULL, models = c("A", "B"), adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5, min_prop = 0.05), start_simple = FALSE, save_pdf = NULL, verbose = TRUE)`**
+**`lctm_refine(initial, random = NULL, k_range = 2:7, degree = NULL, knots = NULL, spline_degree = NULL, covariates = NULL, models = c("A", "B"), adequacy_thresholds = list(appa = 0.70, occ = 5.0, entropy = 0.5, min_prop = 0.05), min_prop_action = c("report", "fail", "filter_refit"), max_filter_iter = 3L, start_simple = FALSE, save_pdf = NULL, verbose = TRUE)`**
 
 - `random` — random-effects formula chosen from the diagnostics; defaults to the full polynomial matching `degree`.
 - `degree`/`knots`/`spline_degree` — inherited from `initial` if `NULL`.
 - `covariates` — names added to the *fixed* part of the formula only.
 - `models` — which parameterizations to try and in what order (see below).
+- `min_prop_action` — what to do about the `min_prop` floor: `"report"` (default), `"fail"` (treat below-floor as a search failure), or `"filter_refit"` (auto-drop subjects and refit, up to `max_filter_iter` rounds). See the [filter/refit section](#minimum-class-proportion-and-the-filterrefit-loop).
 - `start_simple` — use a single-class model for starting values, which speeds up large datasets.
-- Returns an `lctm_result` with `best_model`, `best_k`, `best_model_type`, the `adequacy` object, the full `bic_table`, `all_models`, `class_assignments`, and the `search_history`.
+- Returns an `lctm_result` with `best_model`, `best_k`, `best_model_type`, the `adequacy` object, the full `bic_table`, `all_models`, `class_assignments`, `search_history`, and (when `min_prop_action = "filter_refit"` triggered a refit) `filter_chain`.
 
 ### Model A vs. Model B
 
@@ -237,6 +238,35 @@ result2 <- lctm_refine(init2, random = ~ 1 + anthroage,
 ```
 
 Repeat as many rounds as you judge appropriate, or stop.
+
+#### Automating the policy via `min_prop_action`
+
+The manual loop above keeps the decision auditable in your script. When that's overkill — or when you're exploring — `lctm_refine()` can apply the policy itself via the `min_prop_action` argument:
+
+| Value | What happens |
+|---|---|
+| `"report"` (default) | Today's behavior. `min_prop_pass` is reported on the adequacy object but ignored by the BIC search; the search stops at the first model satisfying APPA/OCC/entropy, even if a class is below floor. |
+| `"fail"` | Folds `min_prop_pass` into the search-loop pass criterion. The search keeps walking K and Model A→B until it finds a model whose smallest class is at or above `adequacy_thresholds$min_prop`. `overall_pass` on the adequacy object is left as the three-criterion value — this policy affects *selection*, not the reported adequacy contract. |
+| `"filter_refit"` | After the search lands on an adequacy-passing model, if a class is below floor, automatically call `lctm_filter_small_classes()` and re-run `lctm_refine()` on the filtered data (same trajectory spec, same `random` formula). Repeats up to `max_filter_iter` times (default 3). The full chain of filter outputs and removed IDs is returned in `result$filter_chain` for transparency. |
+
+```r
+# Auto-fail strategy: keep searching until no class is below the 5% floor.
+result <- lctm_refine(
+  initial, random = ~ 1 + anthroage, k_range = 2:7,
+  adequacy_thresholds = list(min_prop = 0.05),
+  min_prop_action = "fail"
+)
+
+# Auto-drop strategy: filter subjects in below-floor classes and refit, up to 3 rounds.
+result <- lctm_refine(
+  initial, random = ~ 1 + anthroage, k_range = 2:7,
+  adequacy_thresholds = list(min_prop = 0.05),
+  min_prop_action = "filter_refit", max_filter_iter = 3
+)
+result$filter_chain   # list of lctm_filter_small_classes() outputs, one per refit round
+```
+
+For a methods paper or anywhere the audit trail matters, the manual loop is still the cleaner choice — the decision lives in your script. `min_prop_action = "filter_refit"` is best thought of as the same loop, automated and bounded.
 
 ## Bundled data
 

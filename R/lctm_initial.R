@@ -103,6 +103,16 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
     stop("degree must be 1 (linear), 2 (quadratic), or 3 (cubic)", call. = FALSE)
   }
 
+  # Soft nudge when the user accepts the default. The investigator-driven
+  # workflow is meant to be a deliberate choice of trajectory form, not a
+  # coast on whatever the default happens to be. Mirrors the
+  # `Using default random effects: ...` message in lctm_refine().
+  if (missing(degree) && is.null(knots) && verbose) {
+    message("Using default trajectory degree = 2 (quadratic). ",
+            "Pass `degree = 1` (linear) or `3` (cubic) to choose a different ",
+            "polynomial, or `knots = c(...)` for a spline.")
+  }
+
   # When knots are supplied, the spline basis defines the mean-trajectory shape,
   # so the polynomial `degree` must be 1. Rather than error on a leftover degree
   # (e.g. the default 2, or a value inherited from a quadratic fit), coerce it.

@@ -32,6 +32,27 @@
 #'     does not affect which model is selected. See [lctm_adequacy()] and
 #'     [lctm_filter_small_classes()].}
 #' }
+#' @param min_prop_action Policy for what to do about the `min_prop` floor:
+#' \describe{
+#'   \item{`"report"`}{(default) Today's behavior: `min_prop_pass` is reported
+#'     on the adequacy object but ignored by the BIC search. The search stops at
+#'     the first model satisfying APPA/OCC/entropy, even if a class is below
+#'     floor. Backward-compatible.}
+#'   \item{`"fail"`}{Fold `min_prop_pass` into the search-loop pass criterion.
+#'     The search keeps walking K and Model A/B until it finds a model whose
+#'     smallest class is at or above `adequacy_thresholds$min_prop`. The
+#'     `overall_pass` field on the returned adequacy object continues to reflect
+#'     APPA/OCC/entropy only — this policy affects model *selection*, not the
+#'     reported adequacy fields.}
+#'   \item{`"filter_refit"`}{After the search finds an adequacy-passing model,
+#'     if a class is below floor, automatically call
+#'     [lctm_filter_small_classes()] and re-run `lctm_refine()` on the filtered
+#'     data (with the same trajectory spec and `random` formula). Repeats up to
+#'     `max_filter_iter` times. The full chain of filter outputs (and removed
+#'     subject IDs) is returned in `$filter_chain` for audit/transparency.}
+#' }
+#' @param max_filter_iter Integer; maximum number of filter→refit rounds when
+#'   `min_prop_action = "filter_refit"`. Default 3. Ignored under other policies.
 #' @param start_simple Logical; if TRUE, uses a simple base model (1 class, no
 #'   random effects) for starting values instead of the full base model. This
 #'   can improve efficiency for large datasets. Default FALSE.
@@ -108,6 +129,8 @@ lctm_refine <- function(initial,
                         models = c("A", "B"),
                         adequacy_thresholds = list(appa = 0.70, occ = 5.0,
                                                    entropy = 0.5, min_prop = 0.05),
+                        min_prop_action = c("report", "fail", "filter_refit"),
+                        max_filter_iter = 3L,
                         start_simple = FALSE,
                         save_pdf = NULL,
                         verbose = TRUE) {
@@ -162,6 +185,15 @@ lctm_refine <- function(initial,
             " polynomial, NOT a spline. Pass `knots` to get a spline.",
             call. = FALSE)
   }
+
+  # Validate min_prop_action policy and the iteration cap. match.arg() also
+  # collapses the c("report", "fail", "filter_refit") default to "report".
+  min_prop_action <- match.arg(min_prop_action)
+  if (!is.numeric(max_filter_iter) || length(max_filter_iter) != 1 ||
+      max_filter_iter < 0 || max_filter_iter != as.integer(max_filter_iter)) {
+    stop("max_filter_iter must be a non-negative integer", call. = FALSE)
+  }
+  max_filter_iter <- as.integer(max_filter_iter)
 
   # Set default thresholds
   default_thresholds <- list(appa = 0.70, occ = 5.0, entropy = 0.5)
@@ -325,7 +357,8 @@ lctm_refine <- function(initial,
   search_history <- data.frame(
     k = integer(), model_type = character(), bic = numeric(),
     appa_pass = logical(), occ_pass = logical(), entropy_pass = logical(),
-    overall_pass = logical(), stringsAsFactors = FALSE
+    min_prop_pass = logical(), overall_pass = logical(),
+    stringsAsFactors = FALSE
   )
 
   all_models <- list()
@@ -392,22 +425,38 @@ lctm_refine <- function(initial,
 
         adequacy <- lctm_adequacy(fitted_model, thresholds = adequacy_thresholds)
 
+        # Stopping criterion: APPA/OCC/entropy are always required (that's what
+        # adequacy$overall_pass reflects). Under min_prop_action = "fail", a
+        # below-floor smallest class also disqualifies the model from being
+        # accepted as the search's stopping point. `overall_pass` on the
+        # adequacy object is left as the three-criterion value -- this policy
+        # affects selection, not the reported adequacy contract.
+        search_pass <- isTRUE(adequacy$overall_pass) &&
+          (min_prop_action != "fail" || isTRUE(adequacy$min_prop_pass))
+
         search_history <- rbind(search_history, data.frame(
           k = k, model_type = model_type, bic = fitted_model$bic,
           appa_pass = adequacy$appa_pass, occ_pass = adequacy$occ_pass,
-          entropy_pass = adequacy$entropy_pass, overall_pass = adequacy$overall_pass,
+          entropy_pass = adequacy$entropy_pass,
+          min_prop_pass = isTRUE(adequacy$min_prop_pass),
+          overall_pass = adequacy$overall_pass,
           stringsAsFactors = FALSE
         ))
 
         model_name <- paste0("K", k, "_", model_type)
         all_models[[model_name]] <- fitted_model
 
-        if (adequacy$overall_pass) {
+        if (search_pass) {
           if (verbose) {
             message("    SUCCESS! Adequacy criteria met.")
             message("    APPA: ", paste(round(adequacy$appa, 2), collapse = ", "))
             message("    OCC: ", paste(round(adequacy$occ, 1), collapse = ", "))
             message("    Entropy: ", round(adequacy$entropy, 3))
+            if (min_prop_action == "fail") {
+              message("    Min class proportion: ",
+                      round(min(adequacy$class_proportions), 3),
+                      " (floor = ", adequacy_thresholds$min_prop, ")")
+            }
           }
           best_model <- fitted_model
           best_adequacy <- adequacy
@@ -417,6 +466,9 @@ lctm_refine <- function(initial,
             if (!adequacy$appa_pass) fails <- c(fails, "APPA")
             if (!adequacy$occ_pass) fails <- c(fails, "OCC")
             if (!adequacy$entropy_pass) fails <- c(fails, "Entropy")
+            if (min_prop_action == "fail" && !isTRUE(adequacy$min_prop_pass)) {
+              fails <- c(fails, "min_prop")
+            }
             message("    Failed: ", paste(fails, collapse = ", "))
           }
         }
@@ -424,10 +476,64 @@ lctm_refine <- function(initial,
         if (verbose) message("    Error: ", e$message)
         search_history <<- rbind(search_history, data.frame(
           k = k, model_type = model_type, bic = NA_real_,
-          appa_pass = NA, occ_pass = NA, entropy_pass = NA, overall_pass = FALSE,
+          appa_pass = NA, occ_pass = NA, entropy_pass = NA,
+          min_prop_pass = NA, overall_pass = FALSE,
           stringsAsFactors = FALSE
         ))
       })
+    }
+  }
+
+  # Optional filter+refit loop. When the search found an adequacy-passing model
+  # that nevertheless has a class below the min_prop floor, drop those subjects
+  # and recurse on the filtered data. Capped by max_filter_iter so a pathological
+  # dataset cannot keep generating tiny classes indefinitely.
+  if (min_prop_action == "filter_refit" && !is.null(best_model) &&
+      isFALSE(best_adequacy$min_prop_pass)) {
+    if (max_filter_iter > 0L) {
+      if (verbose) {
+        message("\nMin class proportion below floor (", adequacy_thresholds$min_prop,
+                "); filtering and re-running refine (iterations remaining: ",
+                max_filter_iter, ").")
+      }
+      filt <- lctm_filter_small_classes(
+        best_model,
+        min_prop = adequacy_thresholds$min_prop,
+        data     = data,
+        verbose  = verbose
+      )
+      if (isTRUE(filt$any_removed)) {
+        # Synthetic initial pointing at the filtered data. We re-use the rest
+        # of the initial object (column names, trajectory spec) so the refit
+        # honors the same specification the user diagnosed against.
+        synth_initial <- initial
+        synth_initial$data <- filt$data
+        # Recurse. Pass `spline_degree = NULL` when there are no knots so the
+        # "ignored without knots" warning doesn't spuriously fire on the refit.
+        refit_result <- lctm_refine(
+          synth_initial,
+          random              = random,
+          k_range             = k_range,
+          degree              = degree,
+          knots               = knots,
+          spline_degree       = if (is.null(knots)) NULL else spline_degree,
+          covariates          = covariates,
+          models              = models,
+          adequacy_thresholds = adequacy_thresholds,
+          min_prop_action     = min_prop_action,
+          max_filter_iter     = max_filter_iter - 1L,
+          start_simple        = start_simple,
+          save_pdf            = save_pdf,
+          verbose             = verbose
+        )
+        refit_result$filter_chain <- c(list(filt), refit_result$filter_chain)
+        return(refit_result)
+      } else if (verbose) {
+        message("Filter step removed no subjects; keeping current model.")
+      }
+    } else if (verbose) {
+      message("\nMin class proportion below floor, but max_filter_iter reached; ",
+              "returning current model.")
     }
   }
 

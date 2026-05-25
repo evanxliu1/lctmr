@@ -188,3 +188,24 @@ test_that("lctm_initial saves PDF when requested", {
   expect_true(file.size(pdf_path) > 0)
   unlink(pdf_path)
 })
+
+test_that("lctm_initial nudges when degree is left at the default", {
+  skip_on_cran()
+
+  data("sample_growth", package = "lctmr")
+  cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                         verbose = FALSE)
+
+  # Default degree -> nudge message fires under verbose
+  expect_message(
+    lctm_initial(cleaned, k = 2, verbose = TRUE),
+    "default trajectory degree"
+  )
+
+  # Explicit degree -> no nudge in the captured message stream
+  msgs <- capture.output(
+    lctm_initial(cleaned, k = 2, degree = 2, verbose = TRUE),
+    type = "message"
+  )
+  expect_false(any(grepl("default trajectory degree", msgs)))
+})
