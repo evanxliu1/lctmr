@@ -42,6 +42,48 @@ test_that("lctm_clean removes subjects with < 2 observations", {
   expect_equal(length(unique(cleaned$data$id)), 2)
 })
 
+test_that("lctm_clean respects min_obs cutoff", {
+  df <- data.frame(
+    id = c(1, 1, 1, 2, 2, 3, 3, 3),
+    time = c(0, 3, 6, 0, 3, 0, 3, 6),
+    outcome = c(5, 6, 7, 5, 6, 4, 5, 6)
+  )
+
+  # Default min_obs = 2: subject 2 (2 obs) is kept, all 3 retained
+  cleaned2 <- lctm_clean(df, "outcome", "time", "id", verbose = FALSE)
+  expect_equal(sort(unique(cleaned2$data$id)), c(1, 2, 3))
+
+  # min_obs = 3: subject 2 (only 2 obs) should be dropped
+  expect_warning(
+    cleaned3 <- lctm_clean(df, "outcome", "time", "id", min_obs = 3,
+                           verbose = FALSE),
+    "fewer than 3 observations"
+  )
+  expect_false(2 %in% cleaned3$data$id)
+  expect_equal(sort(unique(cleaned3$data$id)), c(1, 3))
+})
+
+test_that("lctm_clean validates min_obs", {
+  df <- data.frame(
+    id = c(1, 1, 2, 2),
+    time = c(0, 3, 0, 3),
+    outcome = c(5, 6, 5, 6)
+  )
+
+  expect_error(
+    lctm_clean(df, "outcome", "time", "id", min_obs = 1, verbose = FALSE),
+    "min_obs"
+  )
+  expect_error(
+    lctm_clean(df, "outcome", "time", "id", min_obs = 2.5, verbose = FALSE),
+    "min_obs"
+  )
+  expect_error(
+    lctm_clean(df, "outcome", "time", "id", min_obs = c(2, 3), verbose = FALSE),
+    "min_obs"
+  )
+})
+
 test_that("lctm_clean applies WHO z-score cutoffs", {
   data("sample_growth", package = "lctmr")
 

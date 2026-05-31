@@ -152,12 +152,13 @@ result <- lctm_refine(init, knots = c(6, 12), spline_degree = 2, k_range = 2:5)
 
 ### Key arguments and defaults
 
-**`lctm_clean(data, outcome, time_var, id_var, sex_var = NULL, type = NULL, standards = "WHO", zscore_col = NULL, zscore_col_cdc = NULL, birth_weight_col = NULL, check_decrease = FALSE, verbose = TRUE)`**
+**`lctm_clean(data, outcome, time_var, id_var, sex_var = NULL, type = NULL, standards = "WHO", zscore_col = NULL, zscore_col_cdc = NULL, birth_weight_col = NULL, check_decrease = FALSE, min_obs = 2, verbose = TRUE)`**
 
 - `type` — outcome type for outlier detection: `"weight"`, `"height"`, `"hc"`, or `NULL` (no z-score filtering). When set, `zscore_col` is required.
 - `standards` — `"WHO"` (default), `"CDC"`, or `"both"` (then `zscore_col_cdc` is required).
 - `birth_weight_col` — birth weight in grams; rows with ≤ 500 g or ≥ 5000 g are dropped.
 - `check_decrease` — for `"height"`/`"hc"`, flags implausible decreases > 3 cm between visits.
+- `min_obs` — minimum observations a subject must have to be kept (default 2, the minimum needed to fit a trajectory; set higher, e.g. 3, for more stable per-subject estimates).
 - Returns an `lctm_cleaned` object (cleaned `data` plus the column names and counts of rows/subjects removed).
 
 **`lctm_initial(data, outcome = NULL, time_var = NULL, id_var = NULL, k = 2, degree = 2, knots = NULL, spline_degree = NULL, sex_var = NULL, save_pdf = NULL, verbose = TRUE)`**

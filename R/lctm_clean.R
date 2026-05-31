@@ -28,6 +28,9 @@
 #' @param check_decrease Logical; if TRUE and `type` is `"height"` or `"hc"`,
 #'   flags observations where height or head circumference decreases by more
 #'   than 3 cm between consecutive visits for the same subject. Default FALSE.
+#' @param min_obs Integer; minimum number of observations a subject must have to
+#'   be retained. Subjects with fewer than `min_obs` observations are removed.
+#'   Must be at least 2 (the minimum required to fit a trajectory). Default 2.
 #' @param verbose Logical; if TRUE, prints cleaning summary.
 #'
 #' @return An `lctm_cleaned` object containing:
@@ -59,7 +62,8 @@
 #' 4. If `birth_weight_col` is specified, removes birth weights <=500g or >=5000g
 #' 5. If `check_decrease = TRUE` (height/hc only), removes observations where
 #'    the measure decreases by more than 3 cm
-#' 6. Removes subjects with fewer than 2 remaining observations
+#' 6. Removes subjects with fewer than `min_obs` remaining observations
+#'    (default 2)
 #'
 #' @examples
 #' \dontrun{
@@ -71,6 +75,10 @@
 #' # With WHO z-score cutoffs for weight
 #' cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
 #'                        type = "weight", standards = "WHO", zscore_col = "waz")
+#'
+#' # Require at least 3 observations per subject
+#' cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+#'                        min_obs = 3)
 #' }
 #'
 #' @export
@@ -82,10 +90,18 @@ lctm_clean <- function(data, outcome, time_var, id_var,
                        zscore_col_cdc = NULL,
                        birth_weight_col = NULL,
                        check_decrease = FALSE,
+                       min_obs = 2,
                        verbose = TRUE) {
 
   # Validate basic inputs
   data <- validate_lctm_data(data, outcome, time_var, id_var)
+
+  # Validate min_obs
+  if (!is.numeric(min_obs) || length(min_obs) != 1 || is.na(min_obs) ||
+      min_obs != round(min_obs) || min_obs < 2) {
+    stop("min_obs must be a single whole number >= 2", call. = FALSE)
+  }
+  min_obs <- as.integer(min_obs)
 
   # Validate sex_var if provided
   if (!is.null(sex_var)) {
@@ -215,13 +231,14 @@ lctm_clean <- function(data, outcome, time_var, id_var,
     }
   }
 
-  # Step 5: Remove subjects with < 2 observations
+  # Step 5: Remove subjects with < min_obs observations
   obs_per_subject <- table(data[[id_var]])
-  subjects_to_remove <- names(obs_per_subject[obs_per_subject < 2])
+  subjects_to_remove <- names(obs_per_subject[obs_per_subject < min_obs])
 
   if (length(subjects_to_remove) > 0) {
     warning(length(subjects_to_remove),
-            " subject(s) removed for having fewer than 2 observations",
+            " subject(s) removed for having fewer than ", min_obs,
+            " observations",
             call. = FALSE)
     data <- data[!data[[id_var]] %in% subjects_to_remove, , drop = FALSE]
   }
@@ -246,7 +263,7 @@ lctm_clean <- function(data, outcome, time_var, id_var,
     }
     if (length(subjects_to_remove) > 0) {
       message("Removed ", length(subjects_to_remove),
-              " subjects with < 2 observations")
+              " subjects with < ", min_obs, " observations")
     }
     message("Final: ", nrow(data), " rows, ",
             length(unique(data[[id_var]])), " subjects")

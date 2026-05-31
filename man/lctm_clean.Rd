@@ -16,6 +16,7 @@ lctm_clean(
   zscore_col_cdc = NULL,
   birth_weight_col = NULL,
   check_decrease = FALSE,
+  min_obs = 2,
   verbose = TRUE
 )
 }
@@ -54,6 +55,10 @@ grams) for applying birth weight criteria (<=500g or >=5000g). If NULL
 \item{check_decrease}{Logical; if TRUE and \code{type} is \code{"height"} or \code{"hc"},
 flags observations where height or head circumference decreases by more
 than 3 cm between consecutive visits for the same subject. Default FALSE.}
+
+\item{min_obs}{Integer; minimum number of observations a subject must have to
+be retained. Subjects with fewer than \code{min_obs} observations are removed.
+Must be at least 2 (the minimum required to fit a trajectory). Default 2.}
 
 \item{verbose}{Logical; if TRUE, prints cleaning summary.}
 }
@@ -95,7 +100,8 @@ infants), you may skip this function and pass raw data directly to
 \item If \code{birth_weight_col} is specified, removes birth weights <=500g or >=5000g
 \item If \code{check_decrease = TRUE} (height/hc only), removes observations where
 the measure decreases by more than 3 cm
-\item Removes subjects with fewer than 2 remaining observations
+\item Removes subjects with fewer than \code{min_obs} remaining observations
+(default 2)
 }
 }
 \examples{
@@ -108,6 +114,10 @@ cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid")
 # With WHO z-score cutoffs for weight
 cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
                        type = "weight", standards = "WHO", zscore_col = "waz")
+
+# Require at least 3 observations per subject
+cleaned <- lctm_clean(sample_growth, "weight_raw", "anthroage", "childid",
+                       min_obs = 3)
 }
 
 }
