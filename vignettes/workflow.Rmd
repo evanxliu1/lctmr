@@ -30,7 +30,7 @@ The LCTM workflow has four steps:
 ```
 Step 1: Prepare and clean longitudinal data
            |
-Step 2: Visualize growth + fit initial model (no random effects)
+Step 2: Visualize growth + fit initial model (random intercept only)
            |
         Investigator reviews residual patterns
         and decides random effects structure
