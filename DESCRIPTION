@@ -2,7 +2,7 @@ Package: lctmr
 Title: Latent Class Trajectory Modeling for Growth Data
 Version: 0.6.0
 Authors@R: c(
-    person("Evan", "Liu", , "naoliu@ucdavis.edu", role = c("aut", "cre"),
+    person("Evan", "Liu", , "evanliu5566@gmail.com", role = c("aut", "cre"),
            comment = "Developed the R package"),
     person("Davrina", "Rianda", , "davrina.rianda@gmail.com", role = "aut",
            comment = "Developed the model and analysis workflow; contact for questions about model development"))

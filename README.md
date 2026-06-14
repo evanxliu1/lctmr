@@ -304,10 +304,9 @@ Build them locally with `devtools::build_vignettes()` or read them on the GitHub
 
 ## Authors
 
-- **Evan Liu** (<naoliu@ucdavis.edu>) — developed the R package.
+- **Evan Liu** (<evanliu5566@gmail.com>) — developed the R package.
 - **Davrina Rianda** (<davrina.rianda@gmail.com>) — developed the model and
-  analysis workflow. Please reach out to Davrina for questions about model
-  development.
+  analysis workflow.
 
 ## License
 

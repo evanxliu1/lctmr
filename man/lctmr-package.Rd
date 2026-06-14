@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Evan Liu \email{naoliu@ucdavis.edu} (Developed the R package)
+\strong{Maintainer}: Evan Liu \email{evanliu5566@gmail.com} (Developed the R package)
 
 Authors:
 \itemize{
