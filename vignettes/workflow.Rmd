@@ -75,7 +75,7 @@ This step is optional. You can pass a raw data frame directly to `lctm_initial()
 
 ## Step 2: Visualize and Fit Initial Model
 
-This step produces diagnostic plots and fits an initial model **without random effects**. The purpose is to examine residual patterns that guide the random effects structure for refinement.
+This step produces diagnostic plots and fits an initial model with a random intercept only. Because the random-effects structure is held fixed, any systematic **shape** left in the residuals reflects whether the *mean trajectory form* (polynomial degree or splines) you specified is adequate — not individual-level variation. The leftover shape guides the trajectory form you carry into refinement.
 
 ```{r step2, eval = FALSE}
 initial <- lctm_initial(
@@ -98,14 +98,18 @@ plot(initial, which = "guide")      # Reference patterns
 
 ### Interpreting Residual Patterns
 
-The residual plot is the key diagnostic. Compare the standardized residual patterns in each class against the reference guide:
+The residual plot is the key diagnostic. The *shape* left in each class's residuals tells you the mean-trajectory form still needed. Compare it against the reference guide:
 
-| Pattern in Residuals | Random Effects Structure |
+| Pattern in Residuals | Mean-trajectory form needed |
 |---------------------|------------------------|
-| Horizontal band | Random intercept only: `random = ~ 1` |
-| Diagonal/linear trend | Add linear random slope: `random = ~ 1 + time_var` |
-| Curved pattern | Add quadratic random effect: `random = ~ 1 + time_var + I(time_var^2)` |
-| S-shaped pattern | Consider cubic terms or splines |
+| Flat / horizontal band | Current form is adequate |
+| Diagonal/linear trend | Needs a linear term (`degree >= 1`) |
+| Curved pattern | Needs a quadratic term (`degree >= 2`) |
+| S-shaped pattern | Needs cubic terms or splines (`degree = 3` or `knots`) |
+
+The form you settle on then defines both the fixed/mixture trajectory and the basis for the random-effects structure tested in refinement.
+
+> **Note — the default fit is quadratic.** Since `lctm_initial()` fits a quadratic mean by default, the residuals will usually already look flat: that means the quadratic mean is adequate, *not* that no individual-level variation exists. To check whether a simpler form would suffice, refit with a lower `degree` and see whether a systematic shape reappears.
 
 The initial model also produces spaghetti and loess plots. The loess plot helps characterize the functional form of growth (linear, quadratic, cubic) and identify potential inflection points that may require knots.
 

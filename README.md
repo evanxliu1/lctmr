@@ -302,6 +302,13 @@ Build them locally with `devtools::build_vignettes()` or read them on the GitHub
 - **Gee (2014)** — APPA / OCC adequacy criteria.
 - **Proust-Lima et al.** — the `lcmm` package and its `hlme` fitter.
 
+## Authors
+
+- **Evan Liu** (<naoliu@ucdavis.edu>) — developed the R package.
+- **Davrina Rianda** (<davrina.rianda@gmail.com>) — developed the model and
+  analysis workflow. Please reach out to Davrina for questions about model
+  development.
+
 ## License
 
 MIT

@@ -75,18 +75,35 @@ An \code{lctm_initial} object containing:
 \description{
 Fits an initial latent class trajectory model using random intercept only
 (no random slopes) and generates diagnostic plots to guide the choice of
-random effects structure for refinement.
+trajectory form (polynomial degree or splines) for refinement. With random
+effects held fixed, leftover \emph{shape} in the residuals reflects mean-trajectory
+misspecification.
 }
 \details{
-This function fits an initial model with random intercept only. The residual
-plots help determine what random effects structure to use in \code{\link[=lctm_refine]{lctm_refine()}}:
+The residual-vs-time plots show whether the \strong{mean trajectory form} you
+specified (via \code{degree}/\code{knots}) captures the shape of the data. The initial
+model is fit with a random intercept only, so any systematic \emph{shape} left in
+the residuals reflects mean-trajectory misspecification rather than
+individual-level variation. Read the leftover shape as the polynomial order
+the trajectory still needs:
 
 \describe{
-\item{Horizontal band}{Random intercept only is sufficient}
-\item{Diagonal/linear trend}{Add linear random slope}
-\item{Curved pattern}{Add quadratic random effect}
-\item{S-shaped pattern}{Consider cubic terms or splines}
+\item{Flat / horizontal band}{The current trajectory form is adequate}
+\item{Diagonal / linear trend}{Mean form needs a linear term (\code{degree >= 1})}
+\item{Curved pattern}{Mean form needs a quadratic term (\code{degree >= 2})}
+\item{S-shaped pattern}{Mean form needs cubic terms or splines (\code{degree = 3} or \code{knots})}
 }
+
+The trajectory form you settle on here carries into \code{\link[=lctm_refine]{lctm_refine()}}, where it
+defines both the fixed/mixture trajectory and the basis for the random-effects
+structure that is then tested.
+
+\strong{Important — the default is quadratic.} Because \code{lctm_initial()} already fits
+a quadratic mean by default, the residuals will usually look flat regardless of
+the data: that flatness means \emph{"the quadratic mean is adequate,"} not \emph{"no
+individual-level variation exists."} To check whether a lower-order form would
+suffice (e.g. is the quadratic term actually needed?), refit with a lower
+\code{degree} and see whether a systematic shape reappears in the residuals.
 
 This is the second step of the new LCTM workflow:
 

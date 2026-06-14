@@ -2,7 +2,9 @@
 #'
 #' Fits an initial latent class trajectory model using random intercept only
 #' (no random slopes) and generates diagnostic plots to guide the choice of
-#' random effects structure for refinement.
+#' trajectory form (polynomial degree or splines) for refinement. With random
+#' effects held fixed, leftover *shape* in the residuals reflects mean-trajectory
+#' misspecification.
 #'
 #' @param data An `lctm_cleaned` object from [lctm_clean()], or a raw data frame.
 #' @param outcome Character string naming the outcome variable. Required if
@@ -47,15 +49,30 @@
 #' }
 #'
 #' @details
-#' This function fits an initial model with random intercept only. The residual
-#' plots help determine what random effects structure to use in [lctm_refine()]:
+#' The residual-vs-time plots show whether the **mean trajectory form** you
+#' specified (via `degree`/`knots`) captures the shape of the data. The initial
+#' model is fit with a random intercept only, so any systematic *shape* left in
+#' the residuals reflects mean-trajectory misspecification rather than
+#' individual-level variation. Read the leftover shape as the polynomial order
+#' the trajectory still needs:
 #'
 #' \describe{
-#'   \item{Horizontal band}{Random intercept only is sufficient}
-#'   \item{Diagonal/linear trend}{Add linear random slope}
-#'   \item{Curved pattern}{Add quadratic random effect}
-#'   \item{S-shaped pattern}{Consider cubic terms or splines}
+#'   \item{Flat / horizontal band}{The current trajectory form is adequate}
+#'   \item{Diagonal / linear trend}{Mean form needs a linear term (`degree >= 1`)}
+#'   \item{Curved pattern}{Mean form needs a quadratic term (`degree >= 2`)}
+#'   \item{S-shaped pattern}{Mean form needs cubic terms or splines (`degree = 3` or `knots`)}
 #' }
+#'
+#' The trajectory form you settle on here carries into [lctm_refine()], where it
+#' defines both the fixed/mixture trajectory and the basis for the random-effects
+#' structure that is then tested.
+#'
+#' **Important — the default is quadratic.** Because `lctm_initial()` already fits
+#' a quadratic mean by default, the residuals will usually look flat regardless of
+#' the data: that flatness means *"the quadratic mean is adequate,"* not *"no
+#' individual-level variation exists."* To check whether a lower-order form would
+#' suffice (e.g. is the quadratic term actually needed?), refit with a lower
+#' `degree` and see whether a systematic shape reappears in the residuals.
 #'
 #' This is the second step of the new LCTM workflow:
 #'
@@ -324,9 +341,9 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
     ggplot2::geom_smooth(method = "loess", se = FALSE, color = "blue",
                          formula = y ~ x) +
     ggplot2::facet_wrap(~ class, labeller = ggplot2::label_both) +
-    ggplot2::labs(title = "Standardized Residuals by Class",
-                  subtitle = "Review pattern to choose random effects for lctm_refine()",
-                  x = time_var, y = "Standardized Residual") +
+    ggplot2::labs(title = "Residuals by Class",
+                  subtitle = "Leftover shape = mean-trajectory form still needed (see reference guide)",
+                  x = time_var, y = "Residual") +
     ggplot2::theme_minimal()
 
   # 3d: Reference guide — synthetic example residual patterns
@@ -335,10 +352,14 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
   # Print residual interpretation guide
   if (verbose) {
     message("\n=== Residual Interpretation Guide ===")
-    message("  Horizontal band       -> random intercept only (random = ~ 1)")
-    message("  Diagonal/linear trend  -> add linear random slope (random = ~ 1 + ", time_var, ")")
-    message("  Curved pattern        -> add quadratic random effect (random = ~ 1 + ", time_var, " + I(", time_var, "^2))")
-    message("  S-shaped pattern      -> consider cubic terms or splines")
+    message("  Leftover SHAPE in the residuals = mean-trajectory form still needed:")
+    message("  Flat/horizontal band  -> current trajectory form is adequate")
+    message("  Diagonal/linear trend  -> needs a linear term (degree >= 1)")
+    message("  Curved pattern        -> needs a quadratic term (degree >= 2)")
+    message("  S-shaped pattern      -> needs cubic terms or splines (degree = 3 or knots)")
+    message("  NOTE: the default fit is quadratic, so residuals usually look flat.")
+    message("  That means the quadratic mean is adequate -- refit a lower `degree`")
+    message("  to check whether a simpler form would suffice.")
     message("\nUse plot() to view diagnostic plots, then pass to lctm_refine().")
   }
 
@@ -430,16 +451,16 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
       2 * sin(x * 0.6) + stats::rnorm(n, 0, 0.5)
     ),
     pattern = factor(rep(
-      c("A: Horizontal band\n-> Random intercept only",
-        "B: Diagonal/linear trend\n-> Add linear random slope",
-        "C: Curved pattern\n-> Add quadratic random effect",
-        "D: S-shaped pattern\n-> Consider cubic or splines"),
+      c("A: Flat/horizontal band\n-> Current form is adequate",
+        "B: Diagonal/linear trend\n-> Needs linear term (degree >= 1)",
+        "C: Curved pattern\n-> Needs quadratic term (degree >= 2)",
+        "D: S-shaped pattern\n-> Needs cubic or splines"),
       each = n
     ), levels = c(
-      "A: Horizontal band\n-> Random intercept only",
-      "B: Diagonal/linear trend\n-> Add linear random slope",
-      "C: Curved pattern\n-> Add quadratic random effect",
-      "D: S-shaped pattern\n-> Consider cubic or splines"
+      "A: Flat/horizontal band\n-> Current form is adequate",
+      "B: Diagonal/linear trend\n-> Needs linear term (degree >= 1)",
+      "C: Curved pattern\n-> Needs quadratic term (degree >= 2)",
+      "D: S-shaped pattern\n-> Needs cubic or splines"
     ))
   )
 
@@ -451,8 +472,11 @@ lctm_initial <- function(data, outcome = NULL, time_var = NULL, id_var = NULL,
     ggplot2::facet_wrap(~ pattern, scales = "free_y", ncol = 2) +
     ggplot2::labs(
       title = "Residual Pattern Reference Guide",
-      subtitle = "Compare your residual plots above to these example patterns",
-      x = "Time", y = "Standardized Residual"
+      subtitle = paste(
+        "Compare your residual plots above to these example patterns.",
+        "A flat band just means the form you fit is adequate."
+      ),
+      x = "Time", y = "Residual"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(

@@ -1,8 +1,11 @@
 Package: lctmr
 Title: Latent Class Trajectory Modeling for Growth Data
-Version: 0.5.0
-Authors@R:
-    person("Evan", "Liu", , "naoliu@ucdavis.edu", role = c("aut", "cre"))
+Version: 0.6.0
+Authors@R: c(
+    person("Evan", "Liu", , "naoliu@ucdavis.edu", role = c("aut", "cre"),
+           comment = "Developed the R package"),
+    person("Davrina", "Rianda", , "davrina.rianda@gmail.com", role = "aut",
+           comment = "Developed the model and analysis workflow; contact for questions about model development"))
 Description: Performs Latent Class Trajectory Modeling (LCTM) to identify
     hidden subgroups of individuals with distinct growth patterns over time.
     Provides a layered API with high-level automation, mid-level step-by-step

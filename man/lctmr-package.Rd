@@ -17,7 +17,12 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Evan Liu \email{naoliu@ucdavis.edu}
+\strong{Maintainer}: Evan Liu \email{naoliu@ucdavis.edu} (Developed the R package)
+
+Authors:
+\itemize{
+  \item Davrina Rianda \email{davrina.rianda@gmail.com} (Developed the model and analysis workflow; contact for questions about model development)
+}
 
 }
 \keyword{internal}

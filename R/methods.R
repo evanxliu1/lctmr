@@ -268,10 +268,12 @@ print.lctm_initial <- function(x, ...) {
   }
 
   cat("\n=== Residual Interpretation Guide ===\n")
-  cat("  Horizontal band       -> random intercept only (random = ~ 1)\n")
-  cat("  Diagonal/linear trend  -> add linear random slope\n")
-  cat("  Curved pattern        -> add quadratic random effect\n")
-  cat("  S-shaped pattern      -> consider cubic terms or splines\n")
+  cat("  Leftover SHAPE in the residuals = mean-trajectory form still needed:\n")
+  cat("  Flat/horizontal band  -> current trajectory form is adequate\n")
+  cat("  Diagonal/linear trend  -> needs a linear term (degree >= 1)\n")
+  cat("  Curved pattern        -> needs a quadratic term (degree >= 2)\n")
+  cat("  S-shaped pattern      -> needs cubic terms or splines (degree = 3 or knots)\n")
+  cat("  NOTE: the default fit is quadratic, so residuals usually look flat.\n")
   cat("\nUse plot() to view diagnostic plots, then pass to lctm_refine().\n")
 
   invisible(x)
