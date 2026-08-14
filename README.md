@@ -298,8 +298,7 @@ Build them locally with `devtools::build_vignettes()` or read them on the GitHub
 
 ## References
 
-- **Lennon et al. (2018)** — the LCTM framework this package adapts.
-- **Gee (2014)** — APPA / OCC adequacy criteria.
+- **Lennon et al. (2018) and Gee (2014)** — the LCTM guidance this package adapts.
 - **Proust-Lima et al.** — the `lcmm` package and its `hlme` fitter.
 
 ## Authors
