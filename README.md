@@ -310,3 +310,6 @@ Build them locally with `devtools::build_vignettes()` or read them on the GitHub
 ## License
 
 MIT
+
+## How to Cite
+Liu E, Rianda D. lctmr: An R package for latent class trajectory modeling of early-life growth. 2026. Available at: github.com/evanxliu1/lctmr
