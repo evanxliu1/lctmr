@@ -1,6 +1,6 @@
 # lctmr
 
-Latent Class Trajectory Modeling (LCTM) for pediatric growth data in R.
+lctmr: An R package for latent class trajectory modeling (LCTM) of early-life growth.
 
 ## Overview
 
