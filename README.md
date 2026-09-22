@@ -1,5 +1,7 @@
 # lctmr
 
+[![DOI](https://zenodo.org/badge/1135157941.svg)](https://doi.org/10.5281/zenodo.22884978)
+
 lctmr: An R package for latent class trajectory modeling (LCTM) of early-life growth.
 
 ## Overview
@@ -312,4 +314,5 @@ Build them locally with `devtools::build_vignettes()` or read them on the GitHub
 MIT
 
 ## How to Cite
-Liu E, Rianda D. lctmr: An R package for latent class trajectory modeling of early-life growth. 2026. Available at: github.com/evanxliu1/lctmr
+
+Liu E, Rianda D. lctmr: An R package for latent class trajectory modeling of early-life growth. Version 0.6.0. Zenodo; 2026. https://doi.org/10.5281/zenodo.22884978
