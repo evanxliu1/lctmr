@@ -1,6 +1,6 @@
 # lctmr
 
-[![DOI](https://zenodo.org/badge/1135157941.svg)](https://doi.org/10.5281/zenodo.22884978)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22884978-blue)](https://doi.org/10.5281/zenodo.22884978)
 
 lctmr: An R package for latent class trajectory modeling (LCTM) of early-life growth.
 
